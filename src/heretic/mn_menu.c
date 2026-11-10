@@ -1809,6 +1809,12 @@ void MN_DeactivateMenu(void)
         CurrentMenu->oldItPos = CurrentItPos;
     }
     MenuActive = false;
+#ifdef __3DS__
+    // The 3D DEPTH row of the More... menu is drawn over the status bar,
+    // and the bar background is only repainted when its state is
+    // invalidated, so refresh it now that the menu is gone.
+    SB_state = -1;
+#endif
     if (FileMenuKeySteal)
     {
         I_StopTextInput();
