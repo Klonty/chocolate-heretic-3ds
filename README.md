@@ -1,102 +1,52 @@
-# Chocolate Doom
+# Chocolate Heretic for the Nintendo 3DS
 
-Chocolate Doom aims to accurately reproduce the original DOS version of
-Doom and other games based on the Doom engine in a form that can be
-run on modern computers.
+A port of [Chocolate Heretic](https://github.com/chocolate-doom/chocolate-doom)
+(which is [Chocolate Doom](https://www.chocolate-doom.org/)'s accurate Heretic
+engine) to the Nintendo 3DS.
 
-Originally, Chocolate Doom was only a Doom source port. The project
-now includes ports of Heretic and Hexen, and Strife.
+- The 3D view is rendered at the full 400x200 and scaled to the top screen,
+  with stereoscopic 3D for the whole 3D view and the HUD at screen depth.
+- The bottom screen carries the status bar, the inventory bar and a live
+  automap.
+- Sound effects play on the NDSP hardware channels, music is emulated OPL.
 
-Chocolate Doom’s aims are:
+Everything game-related is the unmodified Chocolate Heretic code. The 3DS
+platform layer lives in [`port3ds/`](port3ds/) and replaces SDL with libctru;
+all changes to the shared code are behind `#ifdef __3DS__`.
 
- * To always be 100% Free and Open Source software.
- * Portability to as many different operating systems as possible.
- * Accurate reproduction of the original DOS versions of the games,
-   including bugs.
- * Compatibility with the DOS demo, configuration and savegame files.
- * To provide an accurate retro “feel” (display and input should
-   behave the same).
+**Full documentation, controls, configuration and build instructions:
+[`port3ds/README.md`](port3ds/README.md).**
 
-More information about the philosophy and design behind Chocolate Doom
-can be found in the PHILOSOPHY file distributed with the source code.
+## Quick start
 
-## Setting up gameplay
+1. Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the
+   `3ds-dev` package group.
+2. Build:
 
-For instructions on how to set up Chocolate Doom for play, see the
-INSTALL file.
+   ```
+   cd port3ds
+   make
+   ```
 
-## Configuration File
+3. Copy `heretic.3dsx` and a vanilla Heretic IWAD to `sdmc:/3ds/heretic/` on
+   your SD card and start it from the Homebrew Launcher.
 
-Chocolate Doom is compatible with the DOS Doom configuration file
-(normally named `default.cfg`). Existing configuration files for DOS
-Doom should therefore simply work out of the box. However, Chocolate
-Doom also provides some extra settings. These are stored in a
-separate file named `chocolate-doom.cfg`.
+## Status
 
-The configuration can be edited using the chocolate-setup tool.
+- Built and played on a **New 3DS** (Luma3DS + Homebrew Launcher). The
+  **original 3DS is untested**; expect lower frame rates, especially with
+  stereo 3D enabled.
+- Needs a vanilla Heretic IWAD: `HERETIC.WAD` from the original 1.3 release
+  (GOG's `dos/base/heretic/HERETIC.WAD`, MD5 `66d686b1ed6d35ff103f15dbd30e0341`)
+  or the shareware `heretic1.wad`. The 2025 KEX re-release is **not** a
+  vanilla IWAD and is rejected at startup.
+- Audio needs `sdmc:/3ds/dspfirm.cdc`, the DSP firmware dump (dump it with the
+  DSP1 homebrew). Without it the game runs silently.
+- Single player only: networking is compiled in but has no transport.
+- Music is OPL emulation (DBOPL, 22050 Hz). When a song is first played, a
+  temporary `doom.mid` is written to the data directory and removed again.
 
-## Command line options
+## Licence
 
-Chocolate Doom supports a number of command line parameters, including
-some extras that were not originally suported by the DOS versions. For
-binary distributions, see the CMDLINE file included with your
-download; more information is also available on the Chocolate Doom
-website.
-
-## Playing TCs
-
-With Vanilla Doom there is no way to include sprites in PWAD files.
-Chocolate Doom’s ‘-file’ command line option behaves exactly the same
-as Vanilla Doom, and trying to play TCs by adding the WAD files using
-‘-file’ will not work.
-
-Many Total Conversions (TCs) are distributed as a PWAD file which must
-be merged into the main IWAD. Typically a copy of DEUSF.EXE is
-included which performs this merge. Chocolate Doom includes a new
-option, ‘-merge’, which will simulate this merge. Essentially, the
-WAD directory is merged in memory, removing the need to modify the
-IWAD on disk.
-
-To play TCs using Chocolate Doom, run like this:
-
-```
-chocolate-doom -merge thetc.wad
-```
-
-Here are some examples:
-
-```
-chocolate-doom -merge batman.wad -deh batman.deh vbatman.deh  (Batman Doom)
-chocolate-doom -merge aoddoom1.wad -deh aoddoom1.deh  (Army of Darkness Doom)
-```
-
-## Other information
-
- * Chocolate Doom includes a number of different options for music
-   playback. See the README.Music file for more details.
-
- * More information, including information about how to play various
-   classic TCs, is available on the Chocolate Doom website:
-
-     https://www.chocolate-doom.org/
-
-   You are encouraged to sign up and contribute any useful information
-   you may have regarding the port!
-
- * Chocolate Doom is not perfect. Although it aims to accurately
-   emulate and reproduce the DOS executables, some behavior can be very
-   difficult to reproduce. Because of the nature of the project, you
-   may also encounter Vanilla Doom bugs; these are intentionally
-   present; see the NOT-BUGS file for more information.
-
-   New bug reports, feedback, questions or suggestions can be submitted
-   to the issue tracker on Github:
-
-     https://github.com/chocolate-doom/chocolate-doom/issues
-
- * Source code patches are welcome, but please follow the style
-   guidelines - see the file named HACKING included with the source
-   distribution.
-
- * Chocolate Doom is distributed under the GNU GPL. See the COPYING
-   file for more information.
+GNU GPL v2, like Chocolate Doom — see [`COPYING.md`](COPYING.md). Heretic is a
+trademark of its respective owners; you need your own copy of the game.
