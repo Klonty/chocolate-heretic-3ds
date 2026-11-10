@@ -34,8 +34,7 @@ all changes to the shared code are behind `#ifdef __3DS__`.
 ## Status
 
 - Built and played on a **New 3DS** (Luma3DS + Homebrew Launcher). The
-  **original 3DS is untested**; expect lower frame rates, especially with
-  stereo 3D enabled.
+  original 3DS is untested.
 - Needs a vanilla Heretic IWAD: `HERETIC.WAD` from the original 1.3 release
   (GOG's `dos/base/heretic/HERETIC.WAD`, MD5 `66d686b1ed6d35ff103f15dbd30e0341`)
   or the shareware `heretic1.wad`. The 2025 KEX re-release is **not** a

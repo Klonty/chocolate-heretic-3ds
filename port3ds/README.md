@@ -8,8 +8,7 @@ the 3DS platform layer that replaces SDL.
 ## Status
 
 - Built and played on a **New 3DS** (Luma3DS + Homebrew Launcher). The
-  **original 3DS is untested**: its slower CPU will fall below the 35 fps
-  target, especially with stereo 3D enabled.
+  original 3DS is untested.
 - Only vanilla Heretic IWADs work: `HERETIC.WAD` from the original 1.3
   release (tested with MD5 `66d686b1ed6d35ff103f15dbd30e0341`, e.g. GOG's
   `dos/base/heretic/`) or the shareware `heretic1.wad`. The 2025 KEX
@@ -111,9 +110,9 @@ map units, 0–240, default 96). `stereo_3d 0` ignores the hardware slider
 entirely.
 
 Rendering two 400×200 views costs a second software render per frame, 25%
-more pixels than a 320-wide view. On a New 3DS it runs at the full 35 fps;
-on an original 3DS, set `hud_on_bottom 0` and lower the screen size in the
-options, or play with the slider down.
+more pixels than a 320-wide view. On a New 3DS it runs at the full 35 fps.
+If the frame rate is a problem, set `hud_on_bottom 0` and lower the screen
+size in the options, or play with the slider down.
 
 ## Building
 
