@@ -36,7 +36,13 @@
 
 // Sound sample rate to use for digital output (Hz)
 
+#ifdef __3DS__
+// Only the OPL music stream uses this (sfx play natively on NDSP);
+// 22 kHz keeps the emulator affordable on the ARM11.
+int snd_samplerate = 22050;
+#else
 int snd_samplerate = 44100;
+#endif
 
 // Maximum number of bytes to dedicate to allocated sound effects.
 // (Default: 64MB)
@@ -88,6 +94,9 @@ static const sound_module_t *sound_modules[] =
 #ifndef DISABLE_SDL2MIXER
     &sound_sdl_module,
 #endif // DISABLE_SDL2MIXER
+#ifdef __3DS__
+    &sound_3ds_module,
+#endif
     &sound_pcsound_module,
     NULL,
 };

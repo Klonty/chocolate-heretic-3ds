@@ -25,6 +25,9 @@
 #include "m_controls.h"
 #include "p_local.h"
 #include "am_map.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 #include "am_data.h"
 
 #include "doomkeys.h"
@@ -1533,3 +1536,82 @@ void AM_Drawer(void)
 //  I_Update();
 //  V_MarkRect(f_x, f_y, f_w, f_h);
 }
+
+#ifdef __3DS__
+
+// Nintendo 3DS: draw the map into another buffer (the bottom screen)
+// without disturbing the top-screen automap state.
+
+void AM_DrawToBuffer(pixel_t *buf)
+{
+    static int lastlevel = -1, lastepisode = -1;
+    byte *saved_fb;
+    pixel_t *saved_vb;
+    const char *level_name;
+    int numepisodes;
+
+    if (gamestate != GS_LEVEL || !playeringame[consoleplayer]
+     || players[consoleplayer].mo == NULL)
+    {
+        return;
+    }
+
+    if (lastlevel != gamemap || lastepisode != gameepisode)
+    {
+        boolean was_active = automapactive;
+
+        AM_LevelInit();
+        AM_initVariables();
+        automapactive = was_active;
+        AM_loadPics();
+        lastlevel = gamemap;
+        lastepisode = gameepisode;
+    }
+
+    // AM_clearFB and friends write to I_VideoBuffer directly, so point
+    // everything at the bottom buffer for the duration.
+    saved_fb = fb;
+    saved_vb = I_VideoBuffer;
+    fb = buf;
+    I_VideoBuffer = buf;
+    V_UseBuffer(buf);
+
+    // Keep centred on the player unless the top-screen map is panning.
+    if (!automapactive || followplayer)
+    {
+        AM_doFollowPlayer();
+    }
+
+    AM_clearFB(BACKGROUND);
+    if (grid)
+        AM_drawGrid(GRIDCOLORS);
+    AM_drawWalls();
+    AM_drawPlayers();
+    if (cheating == 2)
+        AM_drawThings(THINGCOLORS, THINGRANGE);
+    if (gameskill == sk_baby)
+    {
+        AM_drawkeys();
+    }
+
+    if (gamemode == retail)
+    {
+        numepisodes = 5;
+    }
+    else
+    {
+        numepisodes = 3;
+    }
+
+    if (gameepisode <= numepisodes && gamemap < 10)
+    {
+        level_name = LevelNames[(gameepisode - 1) * 9 + gamemap - 1];
+        MN_DrTextA(DEH_String(level_name), 20, 145);
+    }
+
+    I_VideoBuffer = saved_vb;
+    V_RestoreBuffer();
+    fb = saved_fb;
+}
+
+#endif

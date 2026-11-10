@@ -738,6 +738,47 @@ static default_t extra_defaults_list[] =
 
     CONFIG_VARIABLE_INT(aspect_ratio_correct),
 
+#ifdef __3DS__
+    //!
+    // Nintendo 3DS: if non-zero, render the 3D view in stereoscopic 3D
+    // when the 3D slider is raised.
+    //
+
+    CONFIG_VARIABLE_INT(stereo_3d),
+
+    //!
+    // Nintendo 3DS: eye separation at full 3D slider, in 1/16ths of a
+    // map unit per eye.  Higher values give stronger depth.
+    //
+
+    CONFIG_VARIABLE_INT(stereo_separation),
+
+    //!
+    // Nintendo 3DS: if non-zero, the bottom screen shows a live automap
+    // with the inventory bar while playing.
+    //
+
+    CONFIG_VARIABLE_INT(bottom_screen),
+
+    //!
+    // Nintendo 3DS: key code sent by each button while playing.
+    //
+
+    CONFIG_VARIABLE_KEY(3ds_button_a),
+    CONFIG_VARIABLE_KEY(3ds_button_b),
+    CONFIG_VARIABLE_KEY(3ds_button_x),
+    CONFIG_VARIABLE_KEY(3ds_button_y),
+    CONFIG_VARIABLE_KEY(3ds_button_l),
+    CONFIG_VARIABLE_KEY(3ds_button_r),
+    CONFIG_VARIABLE_KEY(3ds_button_zl),
+    CONFIG_VARIABLE_KEY(3ds_button_zr),
+    CONFIG_VARIABLE_KEY(3ds_button_dup),
+    CONFIG_VARIABLE_KEY(3ds_button_ddown),
+    CONFIG_VARIABLE_KEY(3ds_button_dleft),
+    CONFIG_VARIABLE_KEY(3ds_button_dright),
+    CONFIG_VARIABLE_KEY(3ds_button_select),
+#endif
+
     //!
     // If non-zero, the screen will have smooth scaling.
     //

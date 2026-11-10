@@ -65,6 +65,9 @@ extern opl_driver_t opl_openbsd_driver;
 extern opl_driver_t opl_win32_driver;
 #endif
 extern opl_driver_t opl_sdl_driver;
+#ifdef __3DS__
+extern opl_driver_t opl_3ds_driver;
+#endif
 
 
 #endif /* #ifndef OPL_INTERNAL_H */

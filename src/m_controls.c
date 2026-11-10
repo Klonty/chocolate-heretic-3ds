@@ -144,8 +144,14 @@ int key_weapon5 = '5';
 int key_weapon6 = '6';
 int key_weapon7 = '7';
 int key_weapon8 = '8';
+#ifdef __3DS__
+// The 3DS has no keyboard; give weapon cycling keys for the L/R mapping.
+int key_prevweapon = 'e';
+int key_nextweapon = 'r';
+#else
 int key_prevweapon = 0;
 int key_nextweapon = 0;
+#endif
 
 // Map control keys:
 
@@ -197,7 +203,12 @@ int key_menu_screenshot = 0;
 int joybfire = 0;
 int joybstrafe = 1;
 int joybuse = 3;
+#ifdef __3DS__
+// Always run (any value >= MAX_JOY_BUTTONS means "always on").
+int joybspeed = 29;
+#else
 int joybspeed = 2;
+#endif
 
 int joybstrafeleft = -1;
 int joybstraferight = -1;

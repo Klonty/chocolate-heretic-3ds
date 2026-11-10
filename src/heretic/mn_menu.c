@@ -33,6 +33,9 @@
 #include "r_local.h"
 #include "s_sound.h"
 #include "v_video.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 #include "am_map.h"
 
 // Macros
@@ -98,6 +101,9 @@ static boolean SCQuitGame(int option);
 static boolean SCEpisode(int option);
 static boolean SCSkill(int option);
 static boolean SCMouseSensi(int option);
+#ifdef __3DS__
+static boolean SCStereoDepth(int option);
+#endif
 static boolean SCSfxVolume(int option);
 static boolean SCMusicVolume(int option);
 static boolean SCScreenSize(int option);
@@ -268,13 +274,21 @@ static MenuItem_t Options2Items[] = {
     {ITT_LRFUNC, "SFX VOLUME", SCSfxVolume, 0, MENU_NONE},
     {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
     {ITT_LRFUNC, "MUSIC VOLUME", SCMusicVolume, 0, MENU_NONE},
-    {ITT_EMPTY, NULL, NULL, 0, MENU_NONE}
+    {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
+#ifdef __3DS__
+    {ITT_LRFUNC, "3D DEPTH", SCStereoDepth, 0, MENU_NONE},
+    {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
+#endif
 };
 
 static Menu_t Options2Menu = {
     90, 20,
     DrawOptions2Menu,
+#ifdef __3DS__
+    8, Options2Items,
+#else
     6, Options2Items,
+#endif
     0,
     MENU_OPTIONS
 };
@@ -715,6 +729,9 @@ static void DrawOptions2Menu(void)
     DrawSlider(&Options2Menu, 1, 9, screenblocks - 3);
     DrawSlider(&Options2Menu, 3, 16, snd_MaxVolume);
     DrawSlider(&Options2Menu, 5, 16, snd_MusicVolume);
+#ifdef __3DS__
+    DrawSlider(&Options2Menu, 7, 16, stereo_separation / 16);
+#endif
 }
 
 //---------------------------------------------------------------------------
@@ -878,6 +895,30 @@ static boolean SCSaveGame(int option)
 {
     char *ptr;
 
+#ifdef __3DS__
+    if (!FileMenuKeySteal)
+    {
+        // Use the system keyboard instead of the blind text entry.
+        char name[SLOTTEXTLEN + 2];
+        int i;
+
+        if (!P3DS_InputText(name, sizeof(name), SlotText[option], "Save name"))
+        {
+            return false;
+        }
+
+        for (i = 0; name[i]; ++i)
+        {
+            name[i] = toupper((unsigned char) name[i]);
+        }
+
+        M_StringCopy(SlotText[option], name, sizeof(SlotText[option]));
+        SlotStatus[option] = 1;
+        G_SaveGame(option, SlotText[option]);
+        MN_DeactivateMenu();
+    }
+    else
+#endif
     if (!FileMenuKeySteal)
     {
         int x, y;
@@ -964,6 +1005,24 @@ static boolean SCSkill(int option)
 // PROC SCMouseSensi
 //
 //---------------------------------------------------------------------------
+
+#ifdef __3DS__
+static boolean SCStereoDepth(int option)
+{
+    if (option == RIGHT_DIR)
+    {
+        if (stereo_separation < 240)
+        {
+            stereo_separation += 16;
+        }
+    }
+    else if (stereo_separation >= 16)
+    {
+        stereo_separation -= 16;
+    }
+    return true;
+}
+#endif
 
 static boolean SCMouseSensi(int option)
 {

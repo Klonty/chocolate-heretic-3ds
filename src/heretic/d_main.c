@@ -45,6 +45,9 @@
 #include "w_main.h"
 #include "v_video.h"
 #include "am_map.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 
 #include "heretic_icon.c"
 
@@ -158,11 +161,42 @@ void D_Display(void)
                 break;
             if (automapactive)
                 AM_Drawer();
+#ifdef __3DS__
+            else if (I_StereoActive())
+            {
+                // Stereo 3D: right eye first, then left eye, which stays
+                // in the screen buffer for the HUD to be drawn over.
+                fixed_t offset = I_StereoEyeOffset();
+                int pshift = I_StereoConvergence() + 1;
+
+                r_stereo_offset = offset;
+                r_stereo_pshift = -pshift;
+                R_RenderPlayerView(&players[displayplayer]);
+                I_StereoSaveView(1, viewwindowx, viewwindowy,
+                                 scaledviewwidth, viewheight);
+
+                r_stereo_offset = -offset;
+                r_stereo_pshift = pshift;
+                R_RenderPlayerView(&players[displayplayer]);
+                I_StereoSaveView(0, viewwindowx, viewwindowy,
+                                 scaledviewwidth, viewheight);
+
+                r_stereo_offset = 0;
+                r_stereo_pshift = 0;
+            }
+#endif
             else
                 R_RenderPlayerView(&players[displayplayer]);
             CT_Drawer();
             UpdateState |= I_FULLVIEW;
             SB_Drawer();
+#ifdef __3DS__
+            if (bottom_screen)
+            {
+                AM_DrawToBuffer(I_BottomBuffer);
+                SB_DrawInventoryTo(I_BottomBuffer);
+            }
+#endif
             break;
         case GS_INTERMISSION:
             IN_Drawer();

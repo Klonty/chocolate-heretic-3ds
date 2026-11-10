@@ -38,6 +38,10 @@
 
 void D_DoomMain (void);
 
+#ifdef __3DS__
+void P3DS_Init(void);
+#endif
+
 int main(int argc, char **argv)
 {
     // save arguments
@@ -63,6 +67,10 @@ int main(int argc, char **argv)
     // compose a proper command line from loose file paths passed as arguments
     // to allow for loading WADs and DEHACKED patches by drag-and-drop
     M_AddLooseFiles();
+#endif
+
+#ifdef __3DS__
+    P3DS_Init();
 #endif
 
     M_FindResponseFile();

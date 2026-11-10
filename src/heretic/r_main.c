@@ -20,6 +20,9 @@
 #include "doomdef.h"
 #include "m_bbox.h"
 #include "r_local.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 #include "tables.h"
 
 int viewangleoffset;
@@ -738,6 +741,15 @@ void R_SetupFrame(player_t * player)
         viewx = player->mo->x;
         viewy = player->mo->y;
     }
+#ifdef __3DS__
+    // Stereo 3D: move the camera sideways along the view's right vector.
+    if (r_stereo_offset != 0)
+    {
+        int right = (viewangle - ANG90) >> ANGLETOFINESHIFT;
+        viewx += FixedMul(r_stereo_offset, finecosine[right]);
+        viewy += FixedMul(r_stereo_offset, finesine[right]);
+    }
+#endif
     extralight = player->extralight;
     viewz = player->viewz;
 

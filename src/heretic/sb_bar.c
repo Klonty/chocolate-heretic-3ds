@@ -26,6 +26,9 @@
 #include "p_local.h"
 #include "s_sound.h"
 #include "v_video.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 #include "am_map.h"
 
 // Types
@@ -1281,3 +1284,22 @@ static void CheatIDDQDFunc(player_t * player, Cheat_t * cheat)
     P_DamageMobj(player->mo, NULL, player->mo, 10000);
     P_SetMessage(player, DEH_String(TXT_CHEATIDDQD), true);
 }
+
+#ifdef __3DS__
+
+// Nintendo 3DS: draw the inventory bar into the bottom-screen buffer.
+
+void SB_DrawInventoryTo(pixel_t *buf)
+{
+    if (gamestate != GS_LEVEL)
+    {
+        return;
+    }
+
+    CPlayer = &players[consoleplayer];
+    V_UseBuffer(buf);
+    DrawInventoryBar();
+    V_RestoreBuffer();
+}
+
+#endif

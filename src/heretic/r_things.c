@@ -21,6 +21,9 @@
 #include "i_swap.h"
 #include "i_system.h"
 #include "r_local.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 
 typedef struct
 {
@@ -698,6 +701,11 @@ void R_DrawPSprite(pspdef_t * psp)
     {
         tempangle = 0;
     }
+#ifdef __3DS__
+    // Stereo 3D: shift the weapon per eye so it sits just in front of
+    // the screen plane instead of being pushed back with the scene.
+    tempangle += (r_stereo_pshift << FRACBITS) >> detailshift;
+#endif
     x1 = (centerxfrac + FixedMul(tx, pspritescale) + tempangle) >> FRACBITS;
     if (x1 > viewwidth)
         return;                 // off the right side

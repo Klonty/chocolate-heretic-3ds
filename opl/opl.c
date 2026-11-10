@@ -47,6 +47,9 @@ static opl_driver_t *drivers[] =
 #ifndef DISABLE_SDL2MIXER
     &opl_sdl_driver,
 #endif // DISABLE_SDL2MIXER
+#ifdef __3DS__
+    &opl_3ds_driver,
+#endif
     NULL
 };
 

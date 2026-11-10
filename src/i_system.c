@@ -218,8 +218,9 @@ void I_PrintStartupBanner(const char *gamedescription)
 
 boolean I_ConsoleStdout(void)
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__3DS__)
     // SDL "helpfully" always redirects stdout to a file.
+    // On the 3DS, I_Error must leave its message on screen.
     return false;
 #else
     return isatty(fileno(stdout));
