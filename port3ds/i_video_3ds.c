@@ -69,7 +69,14 @@ int r_stereo_pshift = 0;
 
 // Bottom screen.
 int bottom_screen = 1;
+int hud_on_bottom = 1;
 pixel_t *I_BottomBuffer = NULL;
+pixel_t *I_BarBuffer = NULL;
+
+boolean I_HudOnBottom(void)
+{
+    return hud_on_bottom && bottom_screen;
+}
 
 #define BOTTOM_W 320
 #define BOTTOM_H 240
@@ -89,7 +96,6 @@ static int dest_x0;                 // left edge of the image on screen
 static byte *eye_view[2];
 static int eye_x, eye_y, eye_w, eye_h;
 static boolean stereo_frame;        // both eyes captured this frame
-static int stereo_shift;            // latched by I_StereoConvergence
 
 // --- Palette ----------------------------------------------------------------
 
@@ -188,10 +194,11 @@ fixed_t I_StereoEyeOffset(void)
     return (fixed_t) (SliderLevel() * stereo_separation * (FRACUNIT / 16));
 }
 
+// Convergence: how far the projection is shifted per eye, in pixels.  The
+// renderer applies it (R_SetStereoView), not the blit.
 int I_StereoConvergence(void)
 {
-    stereo_shift = (int) (SliderLevel() * stereo_separation / 16 + 0.5f);
-    return stereo_shift;
+    return (int) (SliderLevel() * stereo_separation / 16 + 0.5f);
 }
 
 void I_StereoSaveView(int eye, int x, int y, int w, int h)
@@ -244,11 +251,12 @@ static void BlitMono(u16 *fb)
 }
 
 // Stereo blit for one eye.  Inside the view window, pixels that still
-// match the clean left-eye render come from this eye's render, shifted
-// horizontally by `shift` to set the convergence plane.  Anything that
-// was drawn on top afterwards (HUD messages, menus, PAUSED...) differs
-// from the clean render and is shown as-is, at screen depth, to both eyes.
-static void BlitStereo(u16 *fb, int eye, int shift)
+// match the clean left-eye render come from this eye's render; the eye
+// images are already separated and converged by the renderer, so nothing
+// is shifted here.  Anything that was drawn on top afterwards (HUD
+// messages, menus, PAUSED...) differs from the clean render and is shown
+// as-is, at screen depth, to both eyes.
+static void BlitStereo(u16 *fb, int eye)
 {
     const byte *clean = eye_view[0];
     const byte *view = eye_view[eye];
@@ -260,16 +268,6 @@ static void BlitStereo(u16 *fb, int eye, int shift)
         const byte *src = I_VideoBuffer + x;
         int vx = x - eye_x;
         boolean in_view_x = vx >= 0 && vx < eye_w;
-        int sx = vx + shift;
-
-        if (sx < 0)
-        {
-            sx = 0;
-        }
-        else if (sx >= eye_w)
-        {
-            sx = eye_w - 1;
-        }
 
         for (y = 0; y < TOP_H; ++y)
         {
@@ -290,7 +288,7 @@ static void BlitStereo(u16 *fb, int eye, int shift)
 
                 if (vy >= 0 && vy < eye_h && p == clean[vy * eye_w + vx])
                 {
-                    p = view[vy * eye_w + sx];
+                    p = view[vy * eye_w + vx];
                 }
             }
 
@@ -299,7 +297,8 @@ static void BlitStereo(u16 *fb, int eye, int shift)
     }
 }
 
-// Bottom screen: the 320x200 bottom buffer, scaled like the top one.
+// Bottom screen: the middle 320 columns of the bottom buffer, scaled like
+// the top one.
 static void BlitBottom(void)
 {
     u16 *fb = (u16 *) gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
@@ -314,7 +313,7 @@ static void BlitBottom(void)
     for (x = 0; x < BOTTOM_W; ++x)
     {
         u16 *col = fb + x * BOTTOM_H;
-        const byte *src = I_BottomBuffer + x;
+        const byte *src = I_BottomBuffer + P3DS_UI_XOFF + x;
 
         for (y = 0; y < BOTTOM_H; ++y)
         {
@@ -339,13 +338,9 @@ void I_FinishUpdate(void)
 
     if (stereo_frame)
     {
-        // Push the scene back behind the screen: the left image moves
-        // left and the right image moves right.
-        int c = stereo_shift;
-
         right = (u16 *) gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-        BlitStereo(left, 0, c);
-        BlitStereo(right, 1, -c);
+        BlitStereo(left, 0);
+        BlitStereo(right, 1);
         stereo_frame = false;
     }
     else
@@ -400,6 +395,9 @@ void I_InitGraphics(void)
 
     I_BottomBuffer = Z_Malloc(SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);
     memset(I_BottomBuffer, 0, SCREENWIDTH * SCREENHEIGHT);
+
+    I_BarBuffer = Z_Malloc(SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);
+    memset(I_BarBuffer, 0, SCREENWIDTH * SCREENHEIGHT);
 
     SetupScaling();
 
@@ -477,4 +475,5 @@ void I_BindVideoVariables(void)
     M_BindIntVariable("stereo_3d",                 &stereo_3d);
     M_BindIntVariable("stereo_separation",         &stereo_separation);
     M_BindIntVariable("bottom_screen",             &bottom_screen);
+    M_BindIntVariable("hud_on_bottom",             &hud_on_bottom);
 }

@@ -39,6 +39,12 @@
 #include "z_zone.h"
 
 #include "config.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#define UI_XOFFSET P3DS_UI_XOFF
+#else
+#define UI_XOFFSET 0
+#endif
 #ifdef HAVE_LIBPNG
 #include <png.h>
 #endif
@@ -58,6 +64,12 @@ byte *xlatab = NULL;
 // The screen buffer that the v_video.c code draws to.
 
 static pixel_t *dest_screen = NULL;
+
+// Horizontal offset added to UI drawing so that the classic 320-wide
+// layout stays centred when the framebuffer is wider (Nintendo 3DS).  It
+// is zero while drawing to an alternate buffer such as the bottom screen,
+// which is addressed in screen coordinates directly.
+static int ui_xoff = UI_XOFFSET;
 
 int dirtybox[4]; 
 
@@ -108,7 +120,7 @@ void V_CopyRect(int srcx, int srcy, pixel_t *source,
     V_MarkRect(destx, desty, width, height); 
  
     src = source + SCREENWIDTH * srcy + srcx; 
-    dest = dest_screen + SCREENWIDTH * desty + destx; 
+    dest = dest_screen + SCREENWIDTH * desty + destx + ui_xoff;
 
     for ( ; height>0 ; height--) 
     { 
@@ -150,6 +162,7 @@ void V_DrawPatch(int x, int y, patch_t *patch)
 
     y -= SHORT(patch->topoffset);
     x -= SHORT(patch->leftoffset);
+    x += ui_xoff;
 
     // haleyjd 08/28/10: Strife needs silent error checking here.
     if(patchclip_callback)
@@ -196,6 +209,15 @@ void V_DrawPatch(int x, int y, patch_t *patch)
     }
 }
 
+void V_DrawPatchAt(int x, int y, patch_t *patch)
+{
+    int old = ui_xoff;
+
+    ui_xoff = 0;
+    V_DrawPatch(x, y, patch);
+    ui_xoff = old;
+}
+
 //
 // V_DrawPatchFlipped
 // Masks a column based masked pic to the screen.
@@ -214,6 +236,7 @@ void V_DrawPatchFlipped(int x, int y, patch_t *patch)
  
     y -= SHORT(patch->topoffset); 
     x -= SHORT(patch->leftoffset); 
+    x += ui_xoff;
 
     // haleyjd 08/28/10: Strife needs silent error checking here.
     if(patchclip_callback)
@@ -288,6 +311,7 @@ void V_DrawTLPatch(int x, int y, patch_t * patch)
 
     y -= SHORT(patch->topoffset);
     x -= SHORT(patch->leftoffset);
+    x += ui_xoff;
 
     if (x < 0
      || x + SHORT(patch->width) > SCREENWIDTH 
@@ -339,6 +363,7 @@ void V_DrawXlaPatch(int x, int y, patch_t * patch)
 
     y -= SHORT(patch->topoffset);
     x -= SHORT(patch->leftoffset);
+    x += ui_xoff;
 
     if(patchclip_callback)
     {
@@ -389,6 +414,7 @@ void V_DrawAltTLPatch(int x, int y, patch_t * patch)
 
     y -= SHORT(patch->topoffset);
     x -= SHORT(patch->leftoffset);
+    x += ui_xoff;
 
     if (x < 0
      || x + SHORT(patch->width) > SCREENWIDTH
@@ -441,6 +467,7 @@ void V_DrawShadowedPatch(int x, int y, patch_t *patch)
 
     y -= SHORT(patch->topoffset);
     x -= SHORT(patch->leftoffset);
+    x += ui_xoff;
 
     if (x < 0
      || x + SHORT(patch->width) > SCREENWIDTH
@@ -522,7 +549,7 @@ void V_DrawBlock(int x, int y, int width, int height, pixel_t *src)
  
     V_MarkRect (x, y, width, height); 
  
-    dest = dest_screen + y * SCREENWIDTH + x; 
+    dest = dest_screen + y * SCREENWIDTH + x + ui_xoff;
 
     while (height--) 
     { 
@@ -594,7 +621,22 @@ void V_DrawBox(int x, int y, int w, int h, int c)
  
 void V_DrawRawScreen(pixel_t *raw)
 {
+#ifdef __3DS__
+    // The raw lumps are 320x200; centre them in the wider framebuffer.
+    const int w = SCREENWIDTH - 2 * P3DS_UI_XOFF;
+    int y;
+
+    for (y = 0; y < SCREENHEIGHT; ++y)
+    {
+        pixel_t *dest = dest_screen + y * SCREENWIDTH + P3DS_UI_XOFF;
+
+        memcpy(dest, raw + y * w, w * sizeof(*dest));
+        memset(dest - P3DS_UI_XOFF, 0, P3DS_UI_XOFF * sizeof(*dest));
+        memset(dest + w, 0, P3DS_UI_XOFF * sizeof(*dest));
+    }
+#else
     memcpy(dest_screen, raw, SCREENWIDTH * SCREENHEIGHT * sizeof(*dest_screen));
+#endif
 }
 
 //
@@ -612,6 +654,7 @@ void V_Init (void)
 void V_UseBuffer(pixel_t *buffer)
 {
     dest_screen = buffer;
+    ui_xoff = (buffer == I_VideoBuffer) ? UI_XOFFSET : 0;
 }
 
 // Restore screen buffer to the i_video screen buffer.
@@ -619,6 +662,7 @@ void V_UseBuffer(pixel_t *buffer)
 void V_RestoreBuffer(void)
 {
     dest_screen = I_VideoBuffer;
+    ui_xoff = UI_XOFFSET;
 }
 
 //

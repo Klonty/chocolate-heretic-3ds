@@ -402,26 +402,26 @@ void R_DrawViewBorder(void)
     }
     for (x = viewwindowx; x < viewwindowx + viewwidth; x += 16)
     {
-        V_DrawPatch(x, viewwindowy - 4,
-                    W_CacheLumpName(DEH_String("bordt"), PU_CACHE));
-        V_DrawPatch(x, viewwindowy + viewheight,
-                    W_CacheLumpName(DEH_String("bordb"), PU_CACHE));
+        V_DrawPatchAt(x, viewwindowy - 4,
+                      W_CacheLumpName(DEH_String("bordt"), PU_CACHE));
+        V_DrawPatchAt(x, viewwindowy + viewheight,
+                      W_CacheLumpName(DEH_String("bordb"), PU_CACHE));
     }
     for (y = viewwindowy; y < viewwindowy + viewheight; y += 16)
     {
-        V_DrawPatch(viewwindowx - 4, y,
-                    W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
-        V_DrawPatch(viewwindowx + viewwidth, y,
-                    W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx - 4, y,
+                      W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx + viewwidth, y,
+                      W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
     }
-    V_DrawPatch(viewwindowx - 4, viewwindowy - 4,
-                W_CacheLumpName(DEH_String("bordtl"), PU_CACHE));
-    V_DrawPatch(viewwindowx + viewwidth, viewwindowy - 4,
-                W_CacheLumpName(DEH_String("bordtr"), PU_CACHE));
-    V_DrawPatch(viewwindowx + viewwidth, viewwindowy + viewheight,
-                W_CacheLumpName(DEH_String("bordbr"), PU_CACHE));
-    V_DrawPatch(viewwindowx - 4, viewwindowy + viewheight,
-                W_CacheLumpName(DEH_String("bordbl"), PU_CACHE));
+    V_DrawPatchAt(viewwindowx - 4, viewwindowy - 4,
+                  W_CacheLumpName(DEH_String("bordtl"), PU_CACHE));
+    V_DrawPatchAt(viewwindowx + viewwidth, viewwindowy - 4,
+                  W_CacheLumpName(DEH_String("bordtr"), PU_CACHE));
+    V_DrawPatchAt(viewwindowx + viewwidth, viewwindowy + viewheight,
+                  W_CacheLumpName(DEH_String("bordbr"), PU_CACHE));
+    V_DrawPatchAt(viewwindowx - 4, viewwindowy + viewheight,
+                  W_CacheLumpName(DEH_String("bordbl"), PU_CACHE));
 }
 
 /*
@@ -470,21 +470,21 @@ void R_DrawTopBorder(void)
     {
         for (x = viewwindowx; x < viewwindowx + viewwidth; x += 16)
         {
-            V_DrawPatch(x, viewwindowy - 4,
-                        W_CacheLumpName(DEH_String("bordt"), PU_CACHE));
+            V_DrawPatchAt(x, viewwindowy - 4,
+                          W_CacheLumpName(DEH_String("bordt"), PU_CACHE));
         }
-        V_DrawPatch(viewwindowx - 4, viewwindowy,
-                    W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
-        V_DrawPatch(viewwindowx + viewwidth, viewwindowy,
-                    W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
-        V_DrawPatch(viewwindowx - 4, viewwindowy + 16,
-                    W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
-        V_DrawPatch(viewwindowx + viewwidth, viewwindowy + 16,
-                    W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx - 4, viewwindowy,
+                      W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx + viewwidth, viewwindowy,
+                      W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx - 4, viewwindowy + 16,
+                      W_CacheLumpName(DEH_String("bordl"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx + viewwidth, viewwindowy + 16,
+                      W_CacheLumpName(DEH_String("bordr"), PU_CACHE));
 
-        V_DrawPatch(viewwindowx - 4, viewwindowy - 4,
-                    W_CacheLumpName(DEH_String("bordtl"), PU_CACHE));
-        V_DrawPatch(viewwindowx + viewwidth, viewwindowy - 4,
-                    W_CacheLumpName(DEH_String("bordtr"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx - 4, viewwindowy - 4,
+                      W_CacheLumpName(DEH_String("bordtl"), PU_CACHE));
+        V_DrawPatchAt(viewwindowx + viewwidth, viewwindowy - 4,
+                      W_CacheLumpName(DEH_String("bordtr"), PU_CACHE));
     }
 }

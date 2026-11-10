@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "doomdef.h"
 #include "m_bbox.h"
 #include "r_local.h"
@@ -37,6 +38,11 @@ int centerx, centery;
 fixed_t centerxfrac, centeryfrac;
 fixed_t projection;
 
+// The focal length in fixed point.  Equal to projection, but kept separate
+// so that a stereo projection offset can move the image without rescaling
+// it (see R_SetStereoView).
+fixed_t base_projection;
+
 int framecount;                 // just for profiling purposes
 
 int sscount, linecount, loopcount;
@@ -52,6 +58,10 @@ int detailshift;                // 0 = high, 1 = low
 // precalculated math tables
 //
 angle_t clipangle;
+
+// The same, for the right edge of the view.  Equal to clipangle unless a
+// stereo projection offset makes the field of view asymmetric.
+angle_t clipangle_r;
 
 // The viewangletox[viewangle + FINEANGLES/4] lookup maps the visible view
 // angles  to screen X coordinates, flattening the arc to a flat projection
@@ -426,7 +436,7 @@ void R_InitTextureMapping(void)
 //
     // calc focallength so FIELDOFVIEW angles covers SCREENWIDTH
     focallength =
-        FixedDiv(centerxfrac, finetangent[FINEANGLES / 4 + FIELDOFVIEW / 2]);
+        FixedDiv(base_projection, finetangent[FINEANGLES / 4 + FIELDOFVIEW / 2]);
 
     for (i = 0; i < FINEANGLES / 2; i++)
     {
@@ -472,7 +482,105 @@ void R_InitTextureMapping(void)
     }
 
     clipangle = xtoviewangle[0];
+    clipangle_r = -xtoviewangle[viewwidth];
 }
+
+#ifdef __3DS__
+//=============================================================================
+//
+// Stereo 3D convergence.
+//
+// Shifting the projection centre sideways moves the rendered image without
+// distorting it and without running out of pixels at the screen edges:
+// every column is rendered from the world.  Rebuilding the angle tables
+// every frame is far too expensive for the ARM11, so one copy is kept per
+// offset in use (zero, and the two eye offsets) and swapped in per render.
+//
+//=============================================================================
+
+#define PROJ_SLOTS 3
+
+static int base_centerx;
+static int proj_offset[PROJ_SLOTS];
+static int proj_viewwidth[PROJ_SLOTS];
+static boolean proj_valid[PROJ_SLOTS];
+
+static int viewangletox_cache[PROJ_SLOTS][FINEANGLES / 2];
+static angle_t xtoviewangle_cache[PROJ_SLOTS][SCREENWIDTH + 1];
+static fixed_t distscale_cache[PROJ_SLOTS][SCREENWIDTH];
+
+static void SetProjectionCentre(int offset)
+{
+    centerx = base_centerx + offset;
+    centerxfrac = centerx << FRACBITS;
+
+    // Only the image position moves; the focal length (and with it the
+    // scale of sprites and planes) must not change, or the two eyes end
+    // up at different magnifications.
+    projection = base_projection;
+}
+
+static void BuildProjectionSlot(int slot, int offset)
+{
+    int i;
+    fixed_t cosadj;
+
+    SetProjectionCentre(offset);
+    R_InitTextureMapping();
+
+    for (i = 0; i < viewwidth; i++)
+    {
+        cosadj = abs(finecosine[xtoviewangle[i] >> ANGLETOFINESHIFT]);
+        distscale[i] = FixedDiv(FRACUNIT, cosadj);
+    }
+
+    memcpy(viewangletox_cache[slot], viewangletox, sizeof(viewangletox));
+    memcpy(xtoviewangle_cache[slot], xtoviewangle, sizeof(xtoviewangle));
+    memcpy(distscale_cache[slot], distscale, sizeof(distscale));
+
+    proj_offset[slot] = offset;
+    proj_viewwidth[slot] = viewwidth;
+    proj_valid[slot] = true;
+
+    SetProjectionCentre(0);
+}
+
+// Use a projection shifted by offset pixels: positive moves the image to
+// the right.  Call before rendering.
+
+void R_SetStereoView(int offset)
+{
+    int slot;
+
+    if (offset > 0)
+    {
+        slot = 1;
+    }
+    else if (offset < 0)
+    {
+        slot = 2;
+    }
+    else
+    {
+        slot = 0;
+    }
+
+    if (!proj_valid[slot] || proj_offset[slot] != offset
+     || proj_viewwidth[slot] != viewwidth)
+    {
+        BuildProjectionSlot(slot, offset);
+    }
+
+    memcpy(viewangletox, viewangletox_cache[slot], sizeof(viewangletox));
+    memcpy(xtoviewangle, xtoviewangle_cache[slot], sizeof(xtoviewangle));
+    memcpy(distscale, distscale_cache[slot], sizeof(distscale));
+
+    clipangle = xtoviewangle[0];
+    clipangle_r = -xtoviewangle[viewwidth];
+
+    SetProjectionCentre(offset);
+}
+#endif
 
 //=============================================================================
 
@@ -553,6 +661,15 @@ void R_ExecuteSetViewSize(void)
 
     setsizeneeded = false;
 
+#ifdef __3DS__
+    // The status bar is on the bottom screen, so the view always uses the
+    // whole top screen.
+    if (I_HudOnBottom())
+    {
+        setblocks = 11;
+    }
+#endif
+
     if (setblocks == 11)
     {
         scaledviewwidth = SCREENWIDTH;
@@ -560,7 +677,13 @@ void R_ExecuteSetViewSize(void)
     }
     else
     {
+#ifdef __3DS__
+        // "Full size" means the full framebuffer width, which is wider
+        // than the classic 320 columns on this build.
+        scaledviewwidth = setblocks >= 10 ? SCREENWIDTH : setblocks * 32;
+#else
         scaledviewwidth = setblocks * 32;
+#endif
         viewheight = (setblocks * 158 / 10);
     }
 
@@ -569,9 +692,16 @@ void R_ExecuteSetViewSize(void)
 
     centery = viewheight / 2;
     centerx = viewwidth / 2;
+#ifdef __3DS__
+    // New view size: the cached stereo projection tables are stale.
+    base_centerx = centerx;
+    proj_valid[0] = proj_valid[1] = proj_valid[2] = false;
+#endif
     centerxfrac = centerx << FRACBITS;
     centeryfrac = centery << FRACBITS;
     projection = centerxfrac;
+    // The focal length, independent of any stereo projection offset.
+    base_projection = centerxfrac;
 
     if (!detailshift)
     {

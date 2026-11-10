@@ -42,13 +42,13 @@ typedef struct Cheat_s
 // Private Functions
 
 static void DrawSoundInfo(void);
-static void ShadeLine(int x, int y, int height, int shade);
-static void ShadeChain(void);
+static void ShadeLine(pixel_t *buf, int x, int y, int height, int shade);
+static void ShadeChain(pixel_t *buf);
 static void DrINumber(signed int val, int x, int y);
 static void DrBNumber(signed int val, int x, int y);
-static void DrawCommonBar(void);
+static void DrawCommonBar(pixel_t *buf);
 static void DrawMainBar(void);
-static void DrawInventoryBar(void);
+static void DrawInventoryBar(int y);
 static void DrawFullScreenStuff(void);
 static boolean HandleCheats(byte key);
 static void CheatGodFunc(player_t * player, Cheat_t * cheat);
@@ -405,13 +405,13 @@ static void DrSmallNumber(int val, int x, int y)
 //
 //---------------------------------------------------------------------------
 
-static void ShadeLine(int x, int y, int height, int shade)
+static void ShadeLine(pixel_t *buf, int x, int y, int height, int shade)
 {
     byte *dest;
     byte *shades;
 
     shades = colormaps + 9 * 256 + shade * 2 * 256;
-    dest = I_VideoBuffer + y * SCREENWIDTH + x;
+    dest = buf + y * SCREENWIDTH + x;
     while (height--)
     {
         *(dest) = *(shades + *dest);
@@ -425,14 +425,14 @@ static void ShadeLine(int x, int y, int height, int shade)
 //
 //---------------------------------------------------------------------------
 
-static void ShadeChain(void)
+static void ShadeChain(pixel_t *buf)
 {
     int i;
 
     for (i = 0; i < 16; i++)
     {
-        ShadeLine(277 + i, 190, 10, i / 2);
-        ShadeLine(19 + i, 190, 10, 7 - (i / 2));
+        ShadeLine(buf, 277 + i, 190, 10, i / 2);
+        ShadeLine(buf, 19 + i, 190, 10, 7 - (i / 2));
     }
 }
 
@@ -544,6 +544,62 @@ static int oldkeys = -1;
 int playerkeys = 0;
 
 
+// Backdrop and the parts of the status bar shared by its two layouts.
+
+static void DrawBarCommon(pixel_t *buf)
+{
+    if (SB_state == -1)
+    {
+        V_DrawPatch(0, 158, PatchBARBACK);
+        if (players[consoleplayer].cheats & CF_GODMODE)
+        {
+            V_DrawPatch(16, 167,
+                        W_CacheLumpName(DEH_String("GOD1"), PU_CACHE));
+            V_DrawPatch(287, 167,
+                        W_CacheLumpName(DEH_String("GOD2"), PU_CACHE));
+        }
+        oldhealth = -1;
+    }
+    DrawCommonBar(buf);
+}
+
+// The status bar proper: faces, chain, ammo, health, keys.
+
+static void DrawStatBar(void)
+{
+    if (SB_state != 0)
+    {
+        // Main interface
+        V_DrawPatch(34, 160, PatchSTATBAR);
+        oldarti = 0;
+        oldammo = -1;
+        oldarmor = -1;
+        oldweapon = -1;
+        oldfrags = -9999;           //can't use -1, 'cuz of negative frags
+        oldlife = -1;
+        oldkeys = -1;
+    }
+    DrawMainBar();
+    SB_state = 0;
+}
+
+// Draw the status bar (or the inventory bar, while it is shown) at the
+// bottom of the current draw buffer.
+
+static void DrawBar(void)
+{
+    DrawBarCommon(I_VideoBuffer);
+    if (!inventory)
+    {
+        DrawStatBar();
+    }
+    else
+    {
+        DrawInventoryBar(160);
+        SB_state = 1;
+    }
+}
+
 void SB_Drawer(void)
 {
     int frame;
@@ -555,6 +611,13 @@ void SB_Drawer(void)
         DrawSoundInfo();
     }
     CPlayer = &players[consoleplayer];
+#ifdef __3DS__
+    if (I_HudOnBottom() && !automapactive)
+    {
+        // The bar is drawn to the bottom screen by SB_DrawToBuffer().
+    }
+    else
+#endif
     if (viewheight == SCREENHEIGHT && !automapactive)
     {
         DrawFullScreenStuff();
@@ -562,45 +625,7 @@ void SB_Drawer(void)
     }
     else
     {
-        if (SB_state == -1)
-        {
-            V_DrawPatch(0, 158, PatchBARBACK);
-            if (players[consoleplayer].cheats & CF_GODMODE)
-            {
-                V_DrawPatch(16, 167,
-                            W_CacheLumpName(DEH_String("GOD1"), PU_CACHE));
-                V_DrawPatch(287, 167,
-                            W_CacheLumpName(DEH_String("GOD2"), PU_CACHE));
-            }
-            oldhealth = -1;
-        }
-        DrawCommonBar();
-        if (!inventory)
-        {
-            if (SB_state != 0)
-            {
-                // Main interface
-                V_DrawPatch(34, 160, PatchSTATBAR);
-                oldarti = 0;
-                oldammo = -1;
-                oldarmor = -1;
-                oldweapon = -1;
-                oldfrags = -9999;       //can't use -1, 'cuz of negative frags
-                oldlife = -1;
-                oldkeys = -1;
-            }
-            DrawMainBar();
-            SB_state = 0;
-        }
-        else
-        {
-            if (SB_state != 1)
-            {
-                V_DrawPatch(34, 160, PatchINVBAR);
-            }
-            DrawInventoryBar();
-            SB_state = 1;
-        }
+        DrawBar();
     }
     SB_PaletteFlash();
 
@@ -727,7 +752,7 @@ void SB_PaletteFlash(void)
 //
 //---------------------------------------------------------------------------
 
-void DrawCommonBar(void)
+void DrawCommonBar(pixel_t *buf)
 {
     int chainY;
     int healthPos;
@@ -755,7 +780,7 @@ void DrawCommonBar(void)
         V_DrawPatch(17 + healthPos, chainY, PatchLIFEGEM);
         V_DrawPatch(0, 190, PatchLTFACE);
         V_DrawPatch(276, 190, PatchRTFACE);
-        ShadeChain();
+        ShadeChain(buf);
         UpdateState |= I_STATBAR;
     }
 }
@@ -886,7 +911,7 @@ void DrawMainBar(void)
 //
 //---------------------------------------------------------------------------
 
-void DrawInventoryBar(void)
+void DrawInventoryBar(int y)
 {
     const char *patch;
     int i;
@@ -894,7 +919,7 @@ void DrawInventoryBar(void)
 
     x = inv_ptr - curpos;
     UpdateState |= I_STATBAR;
-    V_DrawPatch(34, 160, PatchINVBAR);
+    V_DrawPatch(34, y, PatchINVBAR);
     for (i = 0; i < 7; i++)
     {
         //V_DrawPatch(50+i*31, 160, W_CacheLumpName("ARTIBOX", PU_CACHE));
@@ -903,19 +928,20 @@ void DrawInventoryBar(void)
         {
             patch = DEH_String(patcharti[CPlayer->inventory[x + i].type]);
 
-            V_DrawPatch(50 + i * 31, 160, W_CacheLumpName(patch, PU_CACHE));
-            DrSmallNumber(CPlayer->inventory[x + i].count, 69 + i * 31, 182);
+            V_DrawPatch(50 + i * 31, y, W_CacheLumpName(patch, PU_CACHE));
+            DrSmallNumber(CPlayer->inventory[x + i].count, 69 + i * 31,
+                          y + 22);
         }
     }
-    V_DrawPatch(50 + curpos * 31, 189, PatchSELECTBOX);
+    V_DrawPatch(50 + curpos * 31, y + 29, PatchSELECTBOX);
     if (x != 0)
     {
-        V_DrawPatch(38, 159, !(leveltime & 4) ? PatchINVLFGEM1 :
+        V_DrawPatch(38, y - 1, !(leveltime & 4) ? PatchINVLFGEM1 :
                     PatchINVLFGEM2);
     }
     if (CPlayer->inventorySlotNum - x > 7)
     {
-        V_DrawPatch(269, 159, !(leveltime & 4) ?
+        V_DrawPatch(269, y - 1, !(leveltime & 4) ?
                     PatchINVRTGEM1 : PatchINVRTGEM2);
     }
 }
@@ -1287,7 +1313,9 @@ static void CheatIDDQDFunc(player_t * player, Cheat_t * cheat)
 
 #ifdef __3DS__
 
-// Nintendo 3DS: draw the inventory bar into the bottom-screen buffer.
+// Nintendo 3DS: draw the inventory bar into the bottom-screen buffer,
+// for when the status bar stays on the top screen.  buf is the left edge
+// of the 320-wide UI area inside the buffer.
 
 void SB_DrawInventoryTo(pixel_t *buf)
 {
@@ -1298,8 +1326,40 @@ void SB_DrawInventoryTo(pixel_t *buf)
 
     CPlayer = &players[consoleplayer];
     V_UseBuffer(buf);
-    DrawInventoryBar();
+
+    // Bar backdrop, so the bar's edges do not sit on the automap.
+    V_DrawPatch(0, 158, PatchBARBACK);
+    DrawInventoryBar(160);
+
     V_RestoreBuffer();
+}
+
+// Nintendo 3DS: compose the status bar in a scratch buffer at its native
+// coordinates and copy its top 42 rows to the top of the bottom screen,
+// just above the automap.  buf is the left edge of the 320-wide UI area.
+
+void SB_DrawToBuffer(pixel_t *buf)
+{
+    int y;
+
+    if (gamestate != GS_LEVEL || I_BarBuffer == NULL)
+    {
+        return;
+    }
+
+    CPlayer = &players[consoleplayer];
+
+    V_UseBuffer(I_BarBuffer);
+    DrawBarCommon(I_BarBuffer);
+    DrawStatBar();
+    V_RestoreBuffer();
+
+    for (y = 0; y < P3DS_STATBAR_H; ++y)
+    {
+        memcpy(buf + y * SCREENWIDTH,
+               I_BarBuffer + (158 + y) * SCREENWIDTH,
+               P3DS_UI_W * sizeof(*buf));
+    }
 }
 
 #endif

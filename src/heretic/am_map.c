@@ -98,7 +98,13 @@ static int cheating = 0;
 static int grid = 0;
 
 boolean automapactive = false;
-static int finit_width = SCREENWIDTH;
+static int finit_width =
+#ifdef __3DS__
+    // The automap page (AUTOPAGE) is 320x158; the framebuffer is wider.
+    SCREENWIDTH - 2 * P3DS_UI_XOFF;
+#else
+    SCREENWIDTH;
+#endif
 static int finit_height = SCREENHEIGHT - 42;
 static int f_x, f_y;            // location of window on screen
 static int f_w, f_h;            // size of window on screen
@@ -335,7 +341,12 @@ void AM_initVariables(void)
     //static event_t st_notify = { ev_keyup, AM_MSGENTERED };
 
     automapactive = true;
+#ifdef __3DS__
+    // The map window is 320 wide; centre it in the 400-wide framebuffer.
+    fb = I_VideoBuffer + P3DS_UI_XOFF;
+#else
     fb = I_VideoBuffer;
+#endif
 
     f_oldloc.x = INT_MAX;
     amclock = 0;
@@ -824,9 +835,9 @@ void AM_clearFB(int color)
     j = mapystart * finit_width;
     for (i = 0; i < finit_height; i++)
     {
-        memcpy(I_VideoBuffer + i * finit_width, maplump + j + mapxstart,
+        memcpy(fb + i * SCREENWIDTH, maplump + j + mapxstart,
                finit_width - mapxstart);
-        memcpy(I_VideoBuffer + i * finit_width + finit_width - mapxstart,
+        memcpy(fb + i * SCREENWIDTH + finit_width - mapxstart,
                maplump + j, mapxstart);
         j += finit_width;
         if (j >= finit_height * finit_width)
@@ -979,7 +990,7 @@ void AM_drawFline(fline_t * fl, int color)
                     return;
                 }
 
-#define DOT(xx,yy,cc) fb[(yy)*f_w+(xx)]=(cc)    //the MACRO!
+#define DOT(xx,yy,cc) fb[(yy)*SCREENWIDTH+(xx)]=(cc)    //the MACRO!
 
                 dx = fl->b.x - fl->a.x;
                 ax = 2 * (dx < 0 ? -dx : dx);
@@ -1067,17 +1078,17 @@ void PUTDOT(short xx, short yy, byte * cc, byte * cm)
     if (yy == oldyy + 1)
     {
         oldyy++;
-        oldyyshifted += 320;
+        oldyyshifted += SCREENWIDTH;
     }
     else if (yy == oldyy - 1)
     {
         oldyy--;
-        oldyyshifted -= 320;
+        oldyyshifted -= SCREENWIDTH;
     }
     else if (yy != oldyy)
     {
         oldyy = yy;
-        oldyyshifted = yy * 320;
+        oldyyshifted = yy * SCREENWIDTH;
     }
     fb[oldyyshifted + xx] = *(cc);
 //      fb[(yy)*f_w+(xx)]=*(cc);
@@ -1504,6 +1515,19 @@ void AM_Drawer(void)
         return;
 
     UpdateState |= I_FULLSCRN;
+#ifdef __3DS__
+    // Black out the bands either side of the 320-wide map page.
+    {
+        int i;
+
+        for (i = 0; i < finit_height; ++i)
+        {
+            memset(I_VideoBuffer + i * SCREENWIDTH, 0, P3DS_UI_XOFF);
+            memset(I_VideoBuffer + i * SCREENWIDTH
+                   + SCREENWIDTH - P3DS_UI_XOFF, 0, P3DS_UI_XOFF);
+        }
+    }
+#endif
     AM_clearFB(BACKGROUND);
     if (grid)
         AM_drawGrid(GRIDCOLORS);
@@ -1568,13 +1592,17 @@ void AM_DrawToBuffer(pixel_t *buf)
         lastepisode = gameepisode;
     }
 
-    // AM_clearFB and friends write to I_VideoBuffer directly, so point
-    // everything at the bottom buffer for the duration.
+    // AM_clearFB and friends write through fb, so point everything at the
+    // bottom buffer for the duration.  With the HUD on the bottom screen
+    // the 158-row map page is centred in the band between the status bar
+    // (top) and the inventory bar (bottom).
     saved_fb = fb;
     saved_vb = I_VideoBuffer;
-    fb = buf;
-    I_VideoBuffer = buf;
+    fb = buf + (I_HudOnBottom()
+                ? (P3DS_MAP_Y + (P3DS_MAP_H - finit_height) / 2) * SCREENWIDTH
+                : 0);
     V_UseBuffer(buf);
+    I_VideoBuffer = fb;
 
     // Keep centred on the player unless the top-screen map is panning.
     if (!automapactive || followplayer)

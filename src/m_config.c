@@ -761,6 +761,13 @@ static default_t extra_defaults_list[] =
     CONFIG_VARIABLE_INT(bottom_screen),
 
     //!
+    // Nintendo 3DS: if non-zero, the status bar is drawn on the bottom
+    // screen and the 3D view uses the whole top screen.
+    //
+
+    CONFIG_VARIABLE_INT(hud_on_bottom),
+
+    //!
     // Nintendo 3DS: key code sent by each button while playing.
     //
 

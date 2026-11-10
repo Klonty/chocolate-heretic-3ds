@@ -204,8 +204,10 @@ void R_ClearPlanes(void)
     angle = (viewangle - ANG90) >> ANGLETOFINESHIFT;    // left to right mapping
 
     // scale will be unit scale at SCREENWIDTH/2 distance
-    basexscale = FixedDiv(finecosine[angle], centerxfrac);
-    baseyscale = -FixedDiv(finesine[angle], centerxfrac);
+    // projection is the focal length; centerxfrac also carries the stereo
+    // projection offset, so it must not be used as a scale.
+    basexscale = FixedDiv(finecosine[angle], projection);
+    baseyscale = -FixedDiv(finesine[angle], projection);
 }
 
 

@@ -5,6 +5,21 @@ A port of Chocolate Doom's Heretic to the Nintendo 3DS, with stereoscopic
 game-related is the unmodified Chocolate Heretic code; this directory holds
 the 3DS platform layer that replaces SDL.
 
+## Status
+
+- Built and played on a **New 3DS** (Luma3DS + Homebrew Launcher). The
+  **original 3DS is untested**: its slower CPU will fall below the 35 fps
+  target, especially with stereo 3D enabled.
+- Only vanilla Heretic IWADs work: `HERETIC.WAD` from the original 1.3
+  release (tested with MD5 `66d686b1ed6d35ff103f15dbd30e0341`, e.g. GOG's
+  `dos/base/heretic/`) or the shareware `heretic1.wad`. The 2025 KEX
+  re-release's `heretic.wad` is not a vanilla IWAD and is rejected at
+  startup (`R_GenerateLookup: texture >64k`).
+- Sound and music need `sdmc:/3ds/dspfirm.cdc`; without it the game runs
+  silently. Music is OPL emulation (DBOPL at 22050 Hz) and writes a
+  temporary `doom.mid` into the data directory while a song is registered.
+- Single player only: networking is compiled in but has no transport.
+
 ## Requirements
 
 - A 3DS or New 3DS with custom firmware (Luma3DS) and the Homebrew Launcher.
@@ -46,18 +61,42 @@ which is the first place to look when something goes wrong.
 
 Running is always on. Saving a game opens the 3DS keyboard for the name.
 
-Every in-game button can be rebound in `heretic.cfg`: `3ds_button_a`,
+Every in-game button can be rebound in `chocolate-heretic.cfg`: `3ds_button_a`,
 `3ds_button_b`, `3ds_button_x`, `3ds_button_y`, `3ds_button_l`,
 `3ds_button_r`, `3ds_button_zl`, `3ds_button_zr`, `3ds_button_dup`,
 `3ds_button_ddown`, `3ds_button_dleft`, `3ds_button_dright` and
 `3ds_button_select` hold Doom key codes (the same values the `key_*`
 entries use). Menu keys are fixed.
 
-## Bottom screen
+## Screen layout
 
-While playing, the bottom screen shows the automap, following the player,
-with the inventory bar beneath it. Set `bottom_screen 0` in `heretic.cfg`
-to turn it off.
+The 3DS top screen is 400×240 per eye, and the 3D view is rendered at the
+full 400×200 (a wider field of view rather than a stretched or letterboxed
+320×200) and scaled to 400×240. The classic 320-wide interface — menus,
+messages, the intermission and finale screens, title pages — is centred in
+the middle of the screen.
+
+By default the bottom screen is the HUD, laid out like this:
+
+| Rows | Content |
+|---|---|
+| 0–41 | status bar |
+| 42–157 | live automap |
+| 158–199 | inventory bar |
+
+Tapping a slot in the inventory bar selects it; tapping it again uses it.
+
+Two settings in `chocolate-heretic.cfg` change this:
+
+- `hud_on_bottom 0` leaves the status bar on the top screen (centred,
+  with the view above it) and the inventory bar underneath the automap
+  on the bottom screen. This also gives back the SCREEN SIZE option,
+  which only shrinks the view when the bar is on the top.
+- `bottom_screen 0` turns the bottom screen off completely; the status
+  bar then stays on the top screen too.
+
+While the automap is shown on the top screen (SELECT), the status bar
+follows it there for as long as it is up.
 
 ## Stereoscopic 3D
 
@@ -67,13 +106,14 @@ screen depth, and the weapon sits just in front of it.
 
 The depth is set with the **3D DEPTH** slider in Options → More (the second
 options page); the hardware slider scales it. It is stored as
-`stereo_separation` in `heretic.cfg` (eye separation at full slider, in 1/16
+`stereo_separation` in `chocolate-heretic.cfg` (eye separation at full slider, in 1/16
 map units, 0–240, default 96). `stereo_3d 0` ignores the hardware slider
 entirely.
 
-Rendering two views costs a second software render per frame. On a New 3DS
-it runs at the full 35 fps; on an original 3DS, lower the screen size in the
-options or play with the slider down.
+Rendering two 400×200 views costs a second software render per frame, 25%
+more pixels than a 320-wide view. On a New 3DS it runs at the full 35 fps;
+on an original 3DS, set `hud_on_bottom 0` and lower the screen size in the
+options, or play with the slider down.
 
 ## Building
 
@@ -108,11 +148,15 @@ dependencies.
   `opl/opl_sdl.c`.
 - `stubs_3ds.c`: ENDOOM screen and multiplayer launch GUI, both left out.
 
-Changes to the shared code are all under `#ifdef __3DS__`: the stereo camera
-offset in `src/heretic/r_main.c`, the weapon sprite shift in
-`src/heretic/r_things.c`, the two-eye render and bottom-screen draw in
-`src/heretic/d_main.c`, the bottom-screen automap and inventory in
-`src/heretic/am_map.c` and `src/heretic/sb_bar.c`, the 3D depth slider and
+Changes to the shared code are mostly under `#ifdef __3DS__`: the wider
+framebuffer in `src/i_video.h`, the centred 320-wide interface in
+`src/v_video.c`, the stereo camera offset, full-screen view and screen-size
+steps in `src/heretic/r_main.c`, the border patches in
+`src/heretic/r_draw.c`, the weapon sprite shift in `src/heretic/r_things.c`,
+the two-eye render and bottom-screen draw in `src/heretic/d_main.c`, the
+bottom-screen automap and its stride in `src/heretic/am_map.c`, the status
+bar drawable into either buffer and the menu-close status bar refresh in
+`src/heretic/sb_bar.c` and `src/heretic/mn_menu.c`, the 3D depth slider and
 keyboard save names in `src/heretic/mn_menu.c`, config variables in
 `src/m_config.c`, control and sample-rate defaults in `src/m_controls.c` and
 `src/i_sound.c`, and module registration in `src/i_sound.c` and `opl/opl.c`.

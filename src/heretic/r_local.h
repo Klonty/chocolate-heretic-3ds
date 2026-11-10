@@ -262,6 +262,7 @@ extern player_t *viewplayer;
 
 
 extern angle_t clipangle;
+extern angle_t clipangle_r;
 
 extern int viewangletox[FINEANGLES / 2];
 extern angle_t xtoviewangle[SCREENWIDTH + 1];
@@ -311,6 +312,12 @@ fixed_t R_ScaleFromGlobalAngle(angle_t visangle);
 subsector_t *R_PointInSubsector(fixed_t x, fixed_t y);
 void R_AddPointToBox(int x, int y, fixed_t * box);
 void R_ExecuteSetViewSize(void);
+
+#ifdef __3DS__
+// Stereo 3D: render with the projection shifted by the given number of
+// pixels (positive moves the image right).  Call before R_RenderPlayerView.
+void R_SetStereoView(int offset);
+#endif
 
 
 //

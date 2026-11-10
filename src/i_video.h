@@ -24,7 +24,14 @@
 
 // Screen width and height.
 
+#ifdef __3DS__
+// The 3DS top screen is 400x240 per eye; render the full width so the view
+// fills it instead of being letterboxed.  The 320-wide UI is recentred by
+// V_DrawPatch (see P3DS_UI_XOFF).
+#define SCREENWIDTH  400
+#else
 #define SCREENWIDTH  320
+#endif
 #define SCREENHEIGHT 200
 
 // Screen height used when aspect_ratio_correct=true.

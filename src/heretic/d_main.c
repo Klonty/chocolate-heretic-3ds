@@ -166,17 +166,22 @@ void D_Display(void)
             {
                 // Stereo 3D: right eye first, then left eye, which stays
                 // in the screen buffer for the HUD to be drawn over.
+                // Convergence comes from shifting the projection centre,
+                // so the edges are rendered rather than smeared.
                 fixed_t offset = I_StereoEyeOffset();
-                int pshift = I_StereoConvergence() + 1;
+                int conv = I_StereoConvergence();
+                int pshift = conv + 1;
 
                 r_stereo_offset = offset;
                 r_stereo_pshift = -pshift;
+                R_SetStereoView(conv);
                 R_RenderPlayerView(&players[displayplayer]);
                 I_StereoSaveView(1, viewwindowx, viewwindowy,
                                  scaledviewwidth, viewheight);
 
                 r_stereo_offset = -offset;
                 r_stereo_pshift = pshift;
+                R_SetStereoView(-conv);
                 R_RenderPlayerView(&players[displayplayer]);
                 I_StereoSaveView(0, viewwindowx, viewwindowy,
                                  scaledviewwidth, viewheight);
@@ -186,15 +191,46 @@ void D_Display(void)
             }
 #endif
             else
+            {
+#ifdef __3DS__
+                // Back to the centred projection for normal rendering.
+                R_SetStereoView(0);
+#endif
                 R_RenderPlayerView(&players[displayplayer]);
+            }
             CT_Drawer();
             UpdateState |= I_FULLVIEW;
+#ifdef __3DS__
+            if (I_HudOnBottom())
+            {
+                // The status bar follows the automap to the top screen.
+                // On each switch both copies are out of date, so force a
+                // full repaint at the new home.
+                static boolean bar_was_automap;
+
+                if (bar_was_automap != automapactive)
+                {
+                    SB_state = -1;
+                }
+                bar_was_automap = automapactive;
+            }
+#endif
             SB_Drawer();
 #ifdef __3DS__
             if (bottom_screen)
             {
-                AM_DrawToBuffer(I_BottomBuffer);
-                SB_DrawInventoryTo(I_BottomBuffer);
+                AM_DrawToBuffer(I_BottomBuffer + P3DS_UI_XOFF);
+                if (!I_HudOnBottom())
+                {
+                    SB_DrawInventoryTo(I_BottomBuffer + P3DS_UI_XOFF);
+                }
+                else if (!automapactive)
+                {
+                    // While the automap is up, the bar is on the top
+                    // screen and the bottom keeps its last image.
+                    SB_DrawToBuffer(I_BottomBuffer + P3DS_UI_XOFF);
+                    SB_DrawInventoryTo(I_BottomBuffer + P3DS_UI_XOFF);
+                }
             }
 #endif
             break;

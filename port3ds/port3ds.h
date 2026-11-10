@@ -50,11 +50,17 @@ boolean P3DS_InputText(char *buf, size_t bufsize, const char *initial,
 // R_SetupFrame in heretic/r_main.c).  HUD, menus and other 2D overlays
 // are drawn once and shown to both eyes at screen depth.
 //
+// Convergence (where the zero-parallax plane sits) comes from shifting
+// each eye's projection centre, not from shifting the finished image, so
+// every screen column is genuinely rendered and the edges do not smear.
+//
 // Per frame, D_Display does:
 //
 //   if (I_StereoActive()) {
-//       r_stereo_offset = +I_StereoEyeOffset();  render;  I_StereoSaveView(1, ...);
-//       r_stereo_offset = -I_StereoEyeOffset();  render;  I_StereoSaveView(0, ...);
+//       r_stereo_offset = +I_StereoEyeOffset();
+//       R_SetStereoView(+I_StereoConvergence());  render;  I_StereoSaveView(1, ...);
+//       r_stereo_offset = -I_StereoEyeOffset();
+//       R_SetStereoView(-I_StereoConvergence());  render;  I_StereoSaveView(0, ...);
 //       r_stereo_offset = 0;
 //   }
 //   ...draw HUD into I_VideoBuffer...
@@ -68,8 +74,8 @@ boolean I_StereoActive(void);
 // 3D slider.
 fixed_t I_StereoEyeOffset(void);
 
-// Per-eye horizontal image shift in pixels for the current slider
-// position.  The value is latched for this frame's I_FinishUpdate.
+// Per-eye projection shift in pixels for the current slider position.
+// Applied by the renderer through R_SetStereoView().
 int I_StereoConvergence(void);
 
 // Copy the just-rendered view window out of I_VideoBuffer for the given
@@ -89,18 +95,56 @@ extern int stereo_3d;            // 0 = off, 1 = on (follows the slider)
 extern int stereo_separation;    // eye separation at full slider, 1/16 map units, 0..240
 
 //
-// Bottom screen: live automap with the inventory bar underneath.
+// The top screen renders the 3D view at 400x200 (SCREENWIDTH is 400 on
+// this build) and scales it to 400x240.  The classic 320-wide UI is
+// centred inside that framebuffer, and the bottom screen shows the
+// middle 320 columns at 1:1.
 //
 
+#define P3DS_UI_XOFF 40
+#define P3DS_UI_W    320
+
+//
+// Bottom screen: live automap with the status bar underneath.
+//
+// The bottom screen shows the middle 320x200 columns of the buffer:
+//
+//   rows   0..41  status bar
+//   rows  42..157  automap (116 rows)
+//   rows 158..199  inventory bar
+//
+// While the automap is up on the top screen, the status bar follows it
+// there and the bottom screen keeps its last status bar image.
+//
+
+#define P3DS_STATBAR_H 42       // rows 0..41
+#define P3DS_MAP_Y    42        // first automap row
+#define P3DS_MAP_H    116       // automap rows
+#define P3DS_INVBAR_Y 160       // first row of the inventory bar
+#define P3DS_INVBAR_H 40        // and its height
+
 extern int bottom_screen;        // config: 0 = off, 1 = on
+extern int hud_on_bottom;        // config: 1 = status bar on the bottom screen
+
+// True if the status bar is drawn on the bottom screen.
+boolean I_HudOnBottom(void);
 
 // 320x200 paletted buffer shown on the bottom screen while playing.
 extern pixel_t *I_BottomBuffer;
 
+// Scratch buffer the status bar is composed in; it keeps its native
+// coordinates and its top 42 rows are then copied to the bottom screen.
+extern pixel_t *I_BarBuffer;
+
 // Draw the automap into buf (rows 0..157) - heretic/am_map.c.
 void AM_DrawToBuffer(pixel_t *buf);
 
-// Draw the inventory bar into buf (rows 160..199) - heretic/sb_bar.c.
+// Compose the status bar and copy it to the top of the bottom screen -
+// heretic/sb_bar.c.
+void SB_DrawToBuffer(pixel_t *buf);
+
+// Draw the inventory bar (and the bar backdrop behind it) into buf at
+// its usual place at the bottom - heretic/sb_bar.c.
 void SB_DrawInventoryTo(pixel_t *buf);
 
 #endif

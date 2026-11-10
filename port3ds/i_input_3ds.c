@@ -158,13 +158,14 @@ static int ScaleAxis(int value, int range)
     return sign * mag;
 }
 
-// Bottom screen is 320x240 showing a 320x200 buffer; the inventory bar
-// occupies buffer rows 160..199 with seven 31-pixel slots from x = 50.
+// Bottom screen is 320x240 showing a 320x200 buffer.  The inventory bar
+// is seven 31-pixel slots from x = 50; its first row is 160, or
+// P3DS_INVBAR_Y when the status bar moved down and made room for it.
 static void HandleTouch(void)
 {
     touchPosition tp;
     player_t *plr = &players[consoleplayer];
-    int bx, by, i, first, slot;
+    int bx, by, bar_y, i, first, slot;
 
     if (!bottom_screen || gamestate != GS_LEVEL || MenuActive || paused)
     {
@@ -174,8 +175,10 @@ static void HandleTouch(void)
     hidTouchRead(&tp);
     bx = tp.px;
     by = tp.py * SCREENHEIGHT / 240;
+    bar_y = I_HudOnBottom() ? P3DS_INVBAR_Y : 160;
 
-    if (by < 160 || bx < 50 || bx >= 50 + 7 * 31)
+    if (by < bar_y || by >= bar_y + P3DS_INVBAR_H
+     || bx < 50 || bx >= 50 + 7 * 31)
     {
         return;
     }

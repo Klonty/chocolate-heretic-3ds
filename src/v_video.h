@@ -55,6 +55,11 @@ void V_CopyRect(int srcx, int srcy, pixel_t *source,
                 int destx, int desty);
 
 void V_DrawPatch(int x, int y, patch_t *patch);
+
+// Draw a patch at framebuffer coordinates, bypassing the centring offset
+// used when the framebuffer is wider than the classic 320 columns.
+void V_DrawPatchAt(int x, int y, patch_t *patch);
+
 void V_DrawPatchFlipped(int x, int y, patch_t *patch);
 void V_DrawTLPatch(int x, int y, patch_t *patch);
 void V_DrawAltTLPatch(int x, int y, patch_t * patch);
