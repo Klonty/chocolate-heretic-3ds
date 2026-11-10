@@ -138,6 +138,10 @@ void P3DS_Init(void)
     mkdir(P3DS_DATA_DIR, 0777);
     chdir(P3DS_DATA_DIR);
 
+    // Music conversion goes through a temporary .mid file (M_TempFile), and
+    // there is no /tmp on the 3DS; keep it on the SD card with the config.
+    setenv("TMPDIR", P3DS_DATA_DIR, 1);
+
     log_file = fopen(P3DS_LOG_FILE, "w");
     InstallLogDevice();
 
