@@ -46,6 +46,11 @@ static const iwad_t iwads[] =
     { "freedm.wad",   doom2,     commercial, "FreeDM" },
     { "heretic.wad",  heretic,   retail,     "Heretic" },
     { "heretic1.wad", heretic,   shareware,  "Heretic Shareware" },
+#ifdef __3DS__
+    // Free replacement IWAD; found under its own name so it does not have
+    // to be renamed.  After the real IWADs, which win if both are present.
+    { "blasphem.wad", heretic,   retail,     "Blasphemer" },
+#endif
     { "hexen.wad",    hexen,     commercial, "Hexen" },
     //{ "strife0.wad",  strife,    commercial, "Strife" }, // haleyjd: STRIFE-FIXME
     { "strife1.wad",  strife,    commercial, "Strife" },

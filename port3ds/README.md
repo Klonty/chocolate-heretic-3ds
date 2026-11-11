@@ -11,9 +11,11 @@ the 3DS platform layer that replaces SDL.
   original 3DS is untested.
 - Only vanilla Heretic IWADs work: `HERETIC.WAD` from the original 1.3
   release (tested with MD5 `66d686b1ed6d35ff103f15dbd30e0341`, e.g. GOG's
-  `dos/base/heretic/`) or the shareware `heretic1.wad`. The 2025 KEX
-  re-release's `heretic.wad` is not a vanilla IWAD and is rejected at
-  startup (`R_GenerateLookup: texture >64k`).
+  `dos/base/heretic/`), the shareware `heretic1.wad`, or the free
+  [Blasphemer](https://github.com/Blasphemer/blasphemer/releases)
+  `blasphem.wad` (tested with 0.1.8). The 2025 KEX re-release's
+  `heretic.wad` is not a vanilla IWAD and is rejected at startup
+  (`R_GenerateLookup: texture >64k`).
 - Sound and music need `sdmc:/3ds/dspfirm.cdc`; without it the game runs
   silently. Music is OPL emulation (DBOPL at 22050 Hz) and writes a
   temporary `doom.mid` into the data directory while a song is registered.
@@ -22,17 +24,25 @@ the 3DS platform layer that replaces SDL.
 ## Requirements
 
 - A 3DS or New 3DS with custom firmware (Luma3DS) and the Homebrew Launcher.
-- A Heretic IWAD: `HERETIC.WAD` from your own copy of the game, or the
-  freely distributable shareware `heretic1.wad`. The 2025 re-release's
-  `heretic.wad` is not a vanilla IWAD and will not work; GOG ships the
-  original under `dos/base/heretic/`.
+- Game data, one of:
+  - `HERETIC.WAD` from your own copy of the game. The 2025 re-release's
+    `heretic.wad` is not a vanilla IWAD and will not work; GOG ships the
+    original under `dos/base/heretic/`.
+  - The shareware `heretic1.wad` (episode 1 only).
+  - `blasphem.wad` from [Blasphemer](https://github.com/Blasphemer/blasphemer/releases),
+    a free replacement for Heretic's data. Keep its name; no renaming
+    needed. Its savegames are kept apart from Heretic's.
+
+  If several are present, `HERETIC.WAD` wins, then `heretic1.wad`. With none,
+  the game says what to copy where.
 - For sound: `sdmc:/3ds/dspfirm.cdc`, the DSP firmware dump that all 3DS
   homebrew needs for audio. Dump it on your console with the DSP1 homebrew.
 
 ## Installing
 
 1. Copy `heretic.3dsx` to `sdmc:/3ds/heretic/heretic.3dsx`.
-2. Copy your IWAD to `sdmc:/3ds/heretic/` (`HERETIC.WAD` or `heretic1.wad`).
+2. Copy your IWAD to `sdmc:/3ds/heretic/` (`HERETIC.WAD`, `heretic1.wad`
+   or `blasphem.wad`).
 3. Start it from the Homebrew Launcher.
 
 Config files and savegames also go to `sdmc:/3ds/heretic/`. The startup log

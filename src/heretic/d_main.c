@@ -958,8 +958,23 @@ void D_DoomMain(void)
 
     if (iwadfile == NULL)
     {
+#ifdef __3DS__
+        // No command line on the console: say what to copy where.
+        I_Error("No Heretic game data was found.\n"
+                "\n"
+                "Copy one of these files into\n"
+                "sdmc:/3ds/heretic/ :\n"
+                "\n"
+                "  HERETIC.WAD   full game (DOS v1.3)\n"
+                "  heretic1.wad  shareware episode\n"
+                "  blasphem.wad  Blasphemer (free)\n"
+                "\n"
+                "The 2025 re-release's heretic.wad\n"
+                "does not work; use the DOS one.");
+#else
         I_Error("Game mode indeterminate. No IWAD was found. Try specifying\n"
                 "one with the '-iwad' command line parameter.");
+#endif
     }
 
     D_AddFile(iwadfile);
@@ -1076,6 +1091,15 @@ void D_DoomMain(void)
 
     I_SetWindowTitle(gamedescription);
 
+#ifdef __3DS__
+    // Blasphemer's maps are not Heretic's: keep its saves apart so neither
+    // game loads the other's.  Everything else keeps the old directory.
+    if (!strcasecmp(M_BaseName(iwadfile), "blasphem.wad"))
+    {
+        savegamedir = M_GetSaveGameDir("blasphem.wad");
+    }
+    else
+#endif
     savegamedir = M_GetSaveGameDir("heretic.wad");
 
     I_PrintStartupBanner(gamedescription);
