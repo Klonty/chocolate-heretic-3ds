@@ -59,13 +59,16 @@ boolean screenvisible = true;
 boolean screensaver_mode = false;
 unsigned int joywait = 0;
 
-// Stereo settings.  The convergence (per-eye image shift in pixels at
-// full slider) follows the separation as stereo_separation / 16.
+// Stereo settings.  stereo_separation is the per-eye image shift at full
+// slider, in 1/16 pixel: how far behind the screen distant scenery goes.
+// stereo_screen_distance (map units) is what sits on the screen glass;
+// 16 is the closest a wall can get to the player, so nothing pops out.
 int stereo_3d = 1;
-int stereo_separation = 96;     // 96/16 = 6 map units per eye
+int stereo_separation = 96;     // 96/16 = 6 px per eye
+int stereo_screen_distance = 16;
 
 fixed_t r_stereo_offset = 0;
-int r_stereo_pshift = 0;
+fixed_t r_stereo_pshift = 0;
 
 // Bottom screen.
 int bottom_screen = 1;
@@ -189,16 +192,14 @@ boolean I_StereoActive(void)
     return initialized && SliderLevel() > 0.0f;
 }
 
-fixed_t I_StereoEyeOffset(void)
+// Per-eye image shift in screen pixels (fixed point), following the slider
+// smoothly.  Rounded to 1/16 pixel so slider noise does not make the
+// renderer rebuild its projection tables every frame.
+fixed_t I_StereoShift(void)
 {
-    return (fixed_t) (SliderLevel() * stereo_separation * (FRACUNIT / 16));
-}
+    int sixteenths = (int) (SliderLevel() * stereo_separation + 0.5f);
 
-// Convergence: how far the projection is shifted per eye, in pixels.  The
-// renderer applies it (R_SetStereoView), not the blit.
-int I_StereoConvergence(void)
-{
-    return (int) (SliderLevel() * stereo_separation / 16 + 0.5f);
+    return sixteenths * (FRACUNIT / 16);
 }
 
 void I_StereoSaveView(int eye, int x, int y, int w, int h)
@@ -474,6 +475,7 @@ void I_BindVideoVariables(void)
     M_BindIntVariable("aspect_ratio_correct",      &aspect_ratio_correct);
     M_BindIntVariable("stereo_3d",                 &stereo_3d);
     M_BindIntVariable("stereo_separation",         &stereo_separation);
+    M_BindIntVariable("stereo_screen_distance",    &stereo_screen_distance);
     M_BindIntVariable("bottom_screen",             &bottom_screen);
     M_BindIntVariable("hud_on_bottom",             &hud_on_bottom);
 }

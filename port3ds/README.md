@@ -99,15 +99,18 @@ follows it there for as long as it is up.
 
 ## Stereoscopic 3D
 
-With the 3D slider up, the game renders the 3D view twice per frame with the
-camera shifted left and right. The status bar, messages and menus stay at
-screen depth, and the weapon sits just in front of it.
+With the 3D slider up, the game renders the 3D view twice per frame, once
+per eye. Nothing comes out of the screen: a wall you are touching sits on
+the screen glass, and the rest of the scene goes back from there. The weapon,
+status bar, messages and menus sit on the glass too.
 
-The depth is set with the **3D DEPTH** slider in Options → More (the second
-options page); the hardware slider scales it. It is stored as
-`stereo_separation` in `chocolate-heretic.cfg` (eye separation at full slider, in 1/16
-map units, 0–240, default 96). `stereo_3d 0` ignores the hardware slider
-entirely.
+How deep the scene goes is set with the **3D DEPTH** slider in Options →
+More (the second options page); the hardware slider scales it smoothly from
+flat to full. It is stored as `stereo_separation` in `chocolate-heretic.cfg`
+(how far behind the screen distant scenery goes at full slider, in 1/16
+pixel per eye, 0–240, default 96). `stereo_screen_distance` (map units,
+default 16) is the distance that sits on the glass; anything nearer would
+come out of the screen. `stereo_3d 0` ignores the hardware slider entirely.
 
 Rendering two 400×200 views costs a second software render per frame, 25%
 more pixels than a 320-wide view. On a New 3DS it runs at the full 35 fps.

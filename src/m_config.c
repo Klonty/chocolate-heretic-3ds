@@ -747,11 +747,20 @@ static default_t extra_defaults_list[] =
     CONFIG_VARIABLE_INT(stereo_3d),
 
     //!
-    // Nintendo 3DS: eye separation at full 3D slider, in 1/16ths of a
-    // map unit per eye.  Higher values give stronger depth.
+    // Nintendo 3DS: how far behind the screen distant scenery goes at
+    // full 3D slider, in 1/16ths of a pixel per eye.  Higher values give
+    // stronger depth.
     //
 
     CONFIG_VARIABLE_INT(stereo_separation),
+
+    //!
+    // Nintendo 3DS: distance in map units that sits on the screen glass
+    // in 3D.  Nearer things would come out of the screen; 16 is the
+    // closest a wall can get to the player.
+    //
+
+    CONFIG_VARIABLE_INT(stereo_screen_distance),
 
     //!
     // Nintendo 3DS: if non-zero, the bottom screen shows a live automap

@@ -326,8 +326,10 @@ void R_ExecuteSetViewSize(void);
 
 #ifdef __3DS__
 // Stereo 3D: render with the projection shifted by the given number of
-// pixels (positive moves the image right).  Call before R_RenderPlayerView.
-void R_SetStereoView(int offset);
+// pixels, fixed point (positive moves the image right).  Call before
+// R_RenderPlayerView.  Returns the matching sideways camera offset for
+// r_stereo_offset (fixed point map units).
+fixed_t R_SetStereoView(fixed_t offset);
 #endif
 
 

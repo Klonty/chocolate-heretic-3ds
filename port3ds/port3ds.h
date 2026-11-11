@@ -50,18 +50,21 @@ boolean P3DS_InputText(char *buf, size_t bufsize, const char *initial,
 // R_SetupFrame in heretic/r_main.c).  HUD, menus and other 2D overlays
 // are drawn once and shown to both eyes at screen depth.
 //
-// Convergence (where the zero-parallax plane sits) comes from shifting
-// each eye's projection centre, not from shifting the finished image, so
-// every screen column is genuinely rendered and the edges do not smear.
+// Each eye's image is shifted by moving its projection centre (not by
+// shifting the finished image, so the edges are rendered, not smeared),
+// and its camera is moved to match so that stereo_screen_distance lands on
+// the screen glass.  Nothing is nearer than that, so the whole scene sits
+// at or behind the screen.
 //
 // Per frame, D_Display does:
 //
 //   if (I_StereoActive()) {
-//       r_stereo_offset = +I_StereoEyeOffset();
-//       R_SetStereoView(+I_StereoConvergence());  render;  I_StereoSaveView(1, ...);
-//       r_stereo_offset = -I_StereoEyeOffset();
-//       R_SetStereoView(-I_StereoConvergence());  render;  I_StereoSaveView(0, ...);
-//       r_stereo_offset = 0;
+//       s = I_StereoShift();
+//       r_stereo_offset = R_SetStereoView(+s);  r_stereo_pshift = -s;
+//       render;  I_StereoSaveView(1, ...);
+//       r_stereo_offset = R_SetStereoView(-s);  r_stereo_pshift = +s;
+//       render;  I_StereoSaveView(0, ...);
+//       r_stereo_offset = r_stereo_pshift = 0;
 //   }
 //   ...draw HUD into I_VideoBuffer...
 //   I_FinishUpdate();   // builds both eye images
@@ -70,13 +73,9 @@ boolean P3DS_InputText(char *buf, size_t bufsize, const char *initial,
 // True if the 3D slider is up and stereo is turned on in the config.
 boolean I_StereoActive(void);
 
-// Half the eye separation, in map units (fixed point), scaled by the
-// 3D slider.
-fixed_t I_StereoEyeOffset(void);
-
-// Per-eye projection shift in pixels for the current slider position.
-// Applied by the renderer through R_SetStereoView().
-int I_StereoConvergence(void);
+// Per-eye image shift in screen pixels (fixed point) for the current
+// slider position and stereo_separation.
+fixed_t I_StereoShift(void);
 
 // Copy the just-rendered view window out of I_VideoBuffer for the given
 // eye (0 = left, 1 = right).
@@ -86,13 +85,15 @@ void I_StereoSaveView(int eye, int x, int y, int w, int h);
 // R_SetupFrame.  Zero in normal mono rendering.
 extern fixed_t r_stereo_offset;
 
-// Extra horizontal shift (screen pixels) for the player's weapon sprite,
-// so it appears just in front of the screen.  Zero in mono rendering.
-extern int r_stereo_pshift;
+// Extra horizontal shift (view columns, fixed point) for the player's
+// weapon sprite, cancelling the eye's image shift so the weapon sits on
+// the screen.  Zero in mono rendering.
+extern fixed_t r_stereo_pshift;
 
 // Config variables (bound in I_BindVideoVariables).
-extern int stereo_3d;            // 0 = off, 1 = on (follows the slider)
-extern int stereo_separation;    // eye separation at full slider, 1/16 map units, 0..240
+extern int stereo_3d;              // 0 = off, 1 = on (follows the slider)
+extern int stereo_separation;      // per-eye shift at full slider, 1/16 px, 0..240
+extern int stereo_screen_distance; // map units that sit on the screen glass
 
 //
 // The top screen renders the 3D view at 400x200 (SCREENWIDTH is 400 on

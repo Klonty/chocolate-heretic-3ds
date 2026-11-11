@@ -460,6 +460,19 @@ void R_InitTextureMapping(void)
 // scan viewangletox[] to generate xtoviewangleangle[]
 //
 // xtoviewangle will give the smallest view angle that maps to x
+#ifdef __3DS__
+    // viewangletox[] never increases, so the first i with
+    // viewangletox[i] <= x only grows as x shrinks: one pass instead of
+    // a scan per column.  Same result; this runs whenever the 3D slider
+    // moves.
+    i = 0;
+    for (x = viewwidth; x >= 0; x--)
+    {
+        while (viewangletox[i] > x)
+            i++;
+        xtoviewangle[x] = (i << ANGLETOFINESHIFT) - ANG90;
+    }
+#else
     for (x = 0; x <= viewwidth; x++)
     {
         i = 0;
@@ -467,6 +480,7 @@ void R_InitTextureMapping(void)
             i++;
         xtoviewangle[x] = (i << ANGLETOFINESHIFT) - ANG90;
     }
+#endif
 
 //
 // take out the fencepost cases from viewangletox
@@ -488,20 +502,27 @@ void R_InitTextureMapping(void)
 #ifdef __3DS__
 //=============================================================================
 //
-// Stereo 3D convergence.
+// Stereo 3D.
 //
-// Shifting the projection centre sideways moves the rendered image without
-// distorting it and without running out of pixels at the screen edges:
-// every column is rendered from the world.  Rebuilding the angle tables
-// every frame is far too expensive for the ARM11, so one copy is kept per
-// offset in use (zero, and the two eye offsets) and swapped in per render.
+// Each eye's image is shifted sideways by moving the projection centre
+// (a sub-pixel amount, in fixed point), which moves the picture without
+// distorting it and without running out of pixels at the screen edges.
+// The camera is then moved sideways by just enough that anything at
+// stereo_screen_distance lands at the same spot for both eyes, i.e. on the
+// screen glass.  That distance is the closest a wall can get to the player,
+// so nothing ever comes out of the screen: everything sits at or behind it,
+// up to the full shift for distant scenery.
+//
+// Rebuilding the angle tables is too slow to do twice a frame on the
+// ARM11, so one copy is kept per shift in use (zero, and the two eyes) and
+// swapped in per render.
 //
 //=============================================================================
 
 #define PROJ_SLOTS 3
 
 static int base_centerx;
-static int proj_offset[PROJ_SLOTS];
+static fixed_t proj_offset[PROJ_SLOTS];
 static int proj_viewwidth[PROJ_SLOTS];
 static boolean proj_valid[PROJ_SLOTS];
 
@@ -509,10 +530,10 @@ static int viewangletox_cache[PROJ_SLOTS][FINEANGLES / 2];
 static angle_t xtoviewangle_cache[PROJ_SLOTS][SCREENWIDTH + 1];
 static fixed_t distscale_cache[PROJ_SLOTS][SCREENWIDTH];
 
-static void SetProjectionCentre(int offset)
+static void SetProjectionCentre(fixed_t offset)
 {
-    centerx = base_centerx + offset;
-    centerxfrac = centerx << FRACBITS;
+    centerxfrac = (base_centerx << FRACBITS) + offset;
+    centerx = centerxfrac >> FRACBITS;
 
     // Only the image position moves; the focal length (and with it the
     // scale of sprites and planes) must not change, or the two eyes end
@@ -520,7 +541,7 @@ static void SetProjectionCentre(int offset)
     projection = base_projection;
 }
 
-static void BuildProjectionSlot(int slot, int offset)
+static void BuildProjectionSlot(int slot, fixed_t offset)
 {
     int i;
     fixed_t cosadj;
@@ -545,12 +566,15 @@ static void BuildProjectionSlot(int slot, int offset)
     SetProjectionCentre(0);
 }
 
-// Use a projection shifted by offset pixels: positive moves the image to
-// the right.  Call before rendering.
+// Use a projection shifted by offset pixels (fixed point): positive moves
+// the image to the right.  Call before rendering.  Returns the sideways
+// camera offset (map units, fixed point, positive = right) that puts
+// stereo_screen_distance at zero parallax for this shift.
 
-void R_SetStereoView(int offset)
+fixed_t R_SetStereoView(fixed_t offset)
 {
     int slot;
+    int distance;
 
     if (offset > 0)
     {
@@ -579,6 +603,17 @@ void R_SetStereoView(int offset)
     clipangle_r = -xtoviewangle[viewwidth];
 
     SetProjectionCentre(offset);
+
+    // An object at distance d moves by camera * projection / d pixels when
+    // the camera moves sideways, opposite to the camera; cancel the image
+    // shift exactly at d = stereo_screen_distance.
+    distance = stereo_screen_distance;
+    if (distance < 1)
+    {
+        distance = 1;
+    }
+
+    return FixedDiv(FixedMul(offset, distance << FRACBITS), base_projection);
 }
 #endif
 

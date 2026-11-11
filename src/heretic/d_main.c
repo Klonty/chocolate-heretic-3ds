@@ -166,22 +166,21 @@ void D_Display(void)
             {
                 // Stereo 3D: right eye first, then left eye, which stays
                 // in the screen buffer for the HUD to be drawn over.
-                // Convergence comes from shifting the projection centre,
-                // so the edges are rendered rather than smeared.
-                fixed_t offset = I_StereoEyeOffset();
-                int conv = I_StereoConvergence();
-                int pshift = conv + 1;
+                // Each eye's image is shifted by `shift` and its camera
+                // moved to match (see R_SetStereoView), so the nearest
+                // walls sit on the screen and the rest goes behind it.
+                // The weapon cancels the shift and stays on the screen.
+                // (Low detail renders half as many columns.)
+                fixed_t shift = I_StereoShift() >> detailshift;
 
-                r_stereo_offset = offset;
-                r_stereo_pshift = -pshift;
-                R_SetStereoView(conv);
+                r_stereo_offset = R_SetStereoView(shift);
+                r_stereo_pshift = -shift;
                 R_RenderPlayerView(&players[displayplayer]);
                 I_StereoSaveView(1, viewwindowx, viewwindowy,
                                  scaledviewwidth, viewheight);
 
-                r_stereo_offset = -offset;
-                r_stereo_pshift = pshift;
-                R_SetStereoView(-conv);
+                r_stereo_offset = R_SetStereoView(-shift);
+                r_stereo_pshift = shift;
                 R_RenderPlayerView(&players[displayplayer]);
                 I_StereoSaveView(0, viewwindowx, viewwindowy,
                                  scaledviewwidth, viewheight);

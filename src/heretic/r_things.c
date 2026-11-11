@@ -702,9 +702,9 @@ void R_DrawPSprite(pspdef_t * psp)
         tempangle = 0;
     }
 #ifdef __3DS__
-    // Stereo 3D: shift the weapon per eye so it sits just in front of
-    // the screen plane instead of being pushed back with the scene.
-    tempangle += (r_stereo_pshift << FRACBITS) >> detailshift;
+    // Stereo 3D: cancel the per-eye projection shift so the weapon sits
+    // on the screen plane instead of being pushed back with the scene.
+    tempangle += r_stereo_pshift;       // already in view columns
 #endif
     x1 = (centerxfrac + FixedMul(tx, pspritescale) + tempangle) >> FRACBITS;
     if (x1 > viewwidth)
