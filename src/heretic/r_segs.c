@@ -338,9 +338,55 @@ void R_StoreWallRange(int start, int stop)
     fixed_t vtop;
     int lightnum;
 
-    if (ds_p == &drawsegs[MAXDRAWSEGS])
-        return;                 // don't overflow and crash
+#ifdef __3DS__
+    // An inverted range would make the sprite-clip memcpy below run with a
+    // negative length and wipe memory.  It cannot happen unless something
+    // has already corrupted the renderer state, so log once and skip it.
+    if (start < 0 || stop >= viewwidth || start > stop)
+    {
+        static boolean warned_bad;
 
+        if (!warned_bad)
+        {
+            warned_bad = true;
+            printf("R_StoreWallRange: bad range %d..%d (viewwidth %d)\n",
+                   start, stop, viewwidth);
+        }
+        return;
+    }
+#endif
+
+    if (ds_p == &drawsegs[MAXDRAWSEGS])
+    {
+#ifdef __3DS__
+        // Dropping a range leaves its screen columns stale; say so once so
+        // the log identifies the limit if this ever happens again.
+        static boolean warned;
+
+        if (!warned)
+        {
+            warned = true;
+            printf("R_StoreWallRange: drawsegs full, dropping ranges.\n");
+        }
+#endif
+        return;                 // don't overflow and crash
+    }
+
+#ifdef __3DS__
+    // A range can append up to three column arrays to openings; if they do
+    // not fit, drop the range instead of writing past the array.
+    if (lastopening - openings + 3 * (stop - start + 1) > MAXOPENINGS)
+    {
+        static boolean warned_openings;
+
+        if (!warned_openings)
+        {
+            warned_openings = true;
+            printf("R_StoreWallRange: openings full, dropping ranges.\n");
+        }
+        return;
+    }
+#endif
 #ifdef RANGECHECK
     if (start >= viewwidth || start > stop)
         I_Error("Bad R_RenderWallRange: %i to %i", start, stop);

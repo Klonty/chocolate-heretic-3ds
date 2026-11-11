@@ -67,7 +67,9 @@ typedef struct
 // render overage and then bomb out by detecting the overflow after the 
 // fact. -haleyjd
 //#define MAXSEGS 32
-#define MAXSEGS (SCREENWIDTH / 2 + 1)
+// Extra slots so that the widest view cannot overrun the array even in the
+// theoretical worst case (one range per two columns, plus the sentinels).
+#define MAXSEGS (SCREENWIDTH / 2 + 8)
 
 cliprange_t solidsegs[MAXSEGS], *newend;        // newend is one past the last valid seg
 
@@ -448,7 +450,13 @@ void R_Subsector(int num)
     }
 
     // check for solidsegs overflow - extremely unsatisfactory!
+#ifdef __3DS__
+    // The vanilla 32-range check rejects scenes that are perfectly valid at
+    // this screen width; the array is sized for the worst case instead.
+    if (newend > &solidsegs[MAXSEGS - 2])
+#else
     if(newend > &solidsegs[32])
+#endif
         I_Error("R_Subsector: solidsegs overflow (vanilla may crash here)\n");
 }
 

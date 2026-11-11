@@ -147,7 +147,12 @@ typedef struct
 
 typedef byte lighttable_t;      // this could be wider for >8 bit display
 
+#ifdef __3DS__
+// Blasphemer E1M1 needs ~170 at the 400 column view (vanilla: 128).
+#define	MAXVISPLANES	256
+#else
 #define	MAXVISPLANES	128
+#endif
 #define	MAXOPENINGS		SCREENWIDTH*64
 
 typedef struct
@@ -184,7 +189,13 @@ typedef struct drawseg_s
 #define SIL_TOP		2
 #define	SIL_BOTH	3
 
+#ifdef __3DS__
+// Dense scenes (large arenas, complex WADs) overflow the vanilla limits and
+// the renderer drops the overflow, leaving holes.  Blasphemer E1M1: ~520.
+#define	MAXDRAWSEGS		1024
+#else
 #define	MAXDRAWSEGS		256
+#endif
 
 // A vissprite_t is a thing that will be drawn during a refresh
 typedef struct vissprite_s
@@ -416,7 +427,11 @@ void R_PrecacheLevel(void);
 //
 // R_things.c
 //
+#ifdef __3DS__
+#define	MAXVISSPRITES	256
+#else
 #define	MAXVISSPRITES	128
+#endif
 
 extern vissprite_t vissprites[MAXVISSPRITES], *vissprite_p;
 extern vissprite_t vsprsortedhead;

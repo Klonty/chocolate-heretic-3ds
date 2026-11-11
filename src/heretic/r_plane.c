@@ -310,6 +310,16 @@ visplane_t *R_CheckPlane(visplane_t * pl, int start, int stop)
 
 // make a new visplane
 
+#ifdef __3DS__
+    // Vanilla has no check here: past MAXVISPLANES this writes over the
+    // globals after visplanes[], which corrupted the clip lists and crashed
+    // in R_StoreWallRange (Blasphemer E1M1).  Fail cleanly instead.
+    if (lastvisplane - visplanes == MAXVISPLANES)
+    {
+        I_Error("R_CheckPlane: no more visplanes");
+    }
+#endif
+
     lastvisplane->height = pl->height;
     lastvisplane->picnum = pl->picnum;
     lastvisplane->lightlevel = pl->lightlevel;
