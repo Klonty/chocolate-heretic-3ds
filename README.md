@@ -1,7 +1,7 @@
 # Chocolate Heretic for the Nintendo 3DS
 
 <p align="center">
-  <img src="docs/IMG_20261111_024559507.jpg" alt="Chocolate Heretic running on a New Nintendo 3DS XL" width="480">
+  <img src="IMG_20261111_024559507.jpg" alt="Chocolate Heretic running on a New Nintendo 3DS XL" width="480">
 </p>
 
 A port of [Chocolate Heretic](https://github.com/chocolate-doom/chocolate-doom)
