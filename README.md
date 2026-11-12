@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="screenshot.png" alt="Chocolate Heretic on the 3DS: the 3D view on the top screen; status bar, automap, weapon selector and inventory bar on the bottom screen" width="400">
-  <img src="stereo-3d.gif" alt="Stereoscopic 3D: the top screen alternating between the left-eye and right-eye images" width="400">
+  <img src="stereo-3d.gif" alt="Stereoscopic 3D: the top screen alternating between the left-eye and right-eye images, with the bottom screen below" width="400">
 </p>
 
 A port of [Chocolate Heretic](https://github.com/chocolate-doom/chocolate-doom)
