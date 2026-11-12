@@ -92,8 +92,20 @@ extern fixed_t r_stereo_pshift;
 
 // Config variables (bound in I_BindVideoVariables).
 extern int stereo_3d;              // 0 = off, 1 = on (follows the slider)
-extern int stereo_separation;      // per-eye shift at full slider, 1/16 px, 0..240
+extern int stereo_separation;      // per-eye shift at full slider, 1/16 px, 0..384
 extern int stereo_screen_distance; // map units that sit on the screen glass
+
+//
+// Gyro aiming (port3ds/i_input_3ds.c).  P3DS_PollInput integrates the
+// gyroscope into these, in degrees; G_BuildTiccmd turns whole units of
+// them into turning and looking and leaves the remainder for next tic.
+//
+extern float p3ds_gyro_turn;       // positive = turn left
+extern float p3ds_gyro_look;       // positive = look up
+
+extern int gyro_aim;               // 0 = off, 1 = turn, 2 = turn + look
+extern int gyro_style;             // 0 = wheel (roll), 1 = camera (yaw)
+extern int gyro_sensitivity;       // 1..16; 4 = 1:1
 
 //
 // The top screen renders the 3D view at 400x200 (SCREENWIDTH is 400 on
@@ -147,5 +159,11 @@ void SB_DrawToBuffer(pixel_t *buf);
 // Draw the inventory bar (and the bar backdrop behind it) into buf at
 // its usual place at the bottom - heretic/sb_bar.c.
 void SB_DrawInventoryTo(pixel_t *buf);
+
+// Weapon selector on the right of the automap band - heretic/sb_bar.c.
+extern int weapon_bar;           // config: 0 = off, 1 = one column, 2 = two
+int SB_WeaponBarWidth(void);     // panel width in pixels, 0 if off
+int SB_WeaponSlotAt(int x, int y);  // weapon key 0-6 at a UI point, or -1
+void SB_DrawWeaponsTo(pixel_t *buf);
 
 #endif

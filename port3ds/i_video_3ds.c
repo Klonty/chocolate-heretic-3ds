@@ -73,6 +73,7 @@ fixed_t r_stereo_pshift = 0;
 // Bottom screen.
 int bottom_screen = 1;
 int hud_on_bottom = 1;
+int weapon_bar = 1;
 pixel_t *I_BottomBuffer = NULL;
 pixel_t *I_BarBuffer = NULL;
 
@@ -478,4 +479,5 @@ void I_BindVideoVariables(void)
     M_BindIntVariable("stereo_screen_distance",    &stereo_screen_distance);
     M_BindIntVariable("bottom_screen",             &bottom_screen);
     M_BindIntVariable("hud_on_bottom",             &hud_on_bottom);
+    M_BindIntVariable("weapon_bar",                &weapon_bar);
 }

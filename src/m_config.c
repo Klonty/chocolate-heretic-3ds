@@ -763,6 +763,27 @@ static default_t extra_defaults_list[] =
     CONFIG_VARIABLE_INT(stereo_screen_distance),
 
     //!
+    // Nintendo 3DS: gyro aiming.  0 = off, 1 = turn left/right,
+    // 2 = turn and look up/down.
+    //
+
+    CONFIG_VARIABLE_INT(gyro_aim),
+
+    //!
+    // Nintendo 3DS: 0 = turn by tilting the console like a steering
+    // wheel, 1 = turn by turning it left/right (camera).
+    //
+
+    CONFIG_VARIABLE_INT(gyro_style),
+
+    //!
+    // Nintendo 3DS: gyro aiming speed, 1-16.  4 turns the view as far as
+    // the console turns; 8 turns it twice as far.
+    //
+
+    CONFIG_VARIABLE_INT(gyro_sensitivity),
+
+    //!
     // Nintendo 3DS: if non-zero, the bottom screen shows a live automap
     // with the inventory bar while playing.
     //
@@ -775,6 +796,13 @@ static default_t extra_defaults_list[] =
     //
 
     CONFIG_VARIABLE_INT(hud_on_bottom),
+
+    //!
+    // Nintendo 3DS: weapon selector on the right of the bottom-screen
+    // automap.  0 = off, 1 = one column, 2 = two columns.
+    //
+
+    CONFIG_VARIABLE_INT(weapon_bar),
 
     //!
     // Nintendo 3DS: key code sent by each button while playing.

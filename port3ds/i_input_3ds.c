@@ -24,6 +24,7 @@
 //
 
 #include <3ds.h>
+#include <math.h>
 #include <string.h>
 
 #include "doomkeys.h"
@@ -137,6 +138,208 @@ static void PostKey(int key, boolean down)
     D_PostEvent(&ev);
 }
 
+// --- Gyro aiming ------------------------------------------------------------
+//
+// The gyroscope reports how fast the console is rotating.  That is
+// integrated over real time into degrees (p3ds_gyro_turn/look), which
+// G_BuildTiccmd turns into view rotation, so the view moves as far as the
+// console did (times the sensitivity) regardless of frame rate.
+//
+// The sensor reads slightly off zero at rest (bias).  It is measured for
+// half a second when the gyro is switched on, and re-measured whenever the
+// console has been held still for a second, so the view does not creep.
+
+int gyro_aim = 0;
+int gyro_style = 0;
+int gyro_sensitivity = 8;
+
+float p3ds_gyro_turn = 0.0f;
+float p3ds_gyro_look = 0.0f;
+
+#define GYRO_AXES          3        // roll, yaw, pitch
+#define GYRO_CALIB_SECONDS 0.5f
+#define GYRO_STILL_SECONDS 1.0f
+#define GYRO_STILL_DPS     1.0f     // max wobble while "held still"
+#define GYRO_DRIFT_DPS     3.0f     // max bias change accepted at once
+#define GYRO_DEADZONE_DPS  0.4f
+#define GYRO_MAX_ACCUM     90.0f
+
+static boolean gyro_on;
+static float gyro_coeff = 14.375f;  // raw units per degree/second
+static float gyro_bias[GYRO_AXES];
+static boolean gyro_calibrated;
+static u64 gyro_last_tick;
+
+// Running window used for both the first calibration and re-calibration.
+static float win_sum[GYRO_AXES];
+static float win_min[GYRO_AXES], win_max[GYRO_AXES];
+static float win_time;
+static int win_count;
+
+static void ResetGyroWindow(void)
+{
+    int i;
+
+    for (i = 0; i < GYRO_AXES; ++i)
+    {
+        win_sum[i] = 0.0f;
+        win_min[i] = 1e9f;
+        win_max[i] = -1e9f;
+    }
+    win_time = 0.0f;
+    win_count = 0;
+}
+
+static void GyroWindowAdd(const float *raw, float dt)
+{
+    int i;
+
+    for (i = 0; i < GYRO_AXES; ++i)
+    {
+        win_sum[i] += raw[i];
+        if (raw[i] < win_min[i]) win_min[i] = raw[i];
+        if (raw[i] > win_max[i]) win_max[i] = raw[i];
+    }
+    win_time += dt;
+    win_count++;
+}
+
+// Called every poll.  active is false while a menu is up, the game is
+// paused or no level is running; the gyro keeps calibrating but the view
+// does not move.
+static void UpdateGyro(boolean active)
+{
+    angularRate rate;
+    float raw[GYRO_AXES];
+    float dps[GYRO_AXES];
+    float dt, gain, turn;
+    u64 now;
+    int i;
+
+    if (gyro_aim <= 0)
+    {
+        if (gyro_on)
+        {
+            HIDUSER_DisableGyroscope();
+            gyro_on = false;
+        }
+        p3ds_gyro_turn = p3ds_gyro_look = 0.0f;
+        return;
+    }
+
+    if (!gyro_on)
+    {
+        float coeff;
+
+        HIDUSER_EnableGyroscope();
+        if (R_SUCCEEDED(HIDUSER_GetGyroscopeRawToDpsCoefficient(&coeff))
+         && coeff > 0.0f)
+        {
+            gyro_coeff = coeff;
+        }
+        gyro_on = true;
+        gyro_calibrated = false;
+        gyro_last_tick = svcGetSystemTick();
+        ResetGyroWindow();
+        p3ds_gyro_turn = p3ds_gyro_look = 0.0f;
+        return;
+    }
+
+    now = svcGetSystemTick();
+    dt = (float) (now - gyro_last_tick) / (float) SYSCLOCK_ARM11;
+    gyro_last_tick = now;
+
+    // A long stall (loading a level) is not a long rotation.
+    if (dt > 0.1f)
+    {
+        dt = 0.1f;
+    }
+
+    // libctru names these fields roll/yaw/pitch, but on hardware x is the
+    // console tipping towards/away from you, z is tilting it like a
+    // steering wheel and y is turning it left/right.
+    hidGyroRead(&rate);
+    raw[0] = rate.z;    // roll (steering wheel)
+    raw[1] = rate.y;    // yaw (turning)
+    raw[2] = rate.x;    // pitch (tipping)
+
+    GyroWindowAdd(raw, dt);
+
+    if (!gyro_calibrated)
+    {
+        if (win_time >= GYRO_CALIB_SECONDS)
+        {
+            for (i = 0; i < GYRO_AXES; ++i)
+            {
+                gyro_bias[i] = win_sum[i] / win_count;
+            }
+            gyro_calibrated = true;
+            ResetGyroWindow();
+        }
+        p3ds_gyro_turn = p3ds_gyro_look = 0.0f;
+        return;
+    }
+
+    // Held still for a while: take the average as the new bias.  A steady
+    // deliberate turn also has little wobble, so only small corrections
+    // are accepted.
+    if (win_time >= GYRO_STILL_SECONDS)
+    {
+        boolean still = true;
+
+        for (i = 0; i < GYRO_AXES; ++i)
+        {
+            float mean = win_sum[i] / win_count;
+
+            if (win_max[i] - win_min[i] > GYRO_STILL_DPS * gyro_coeff
+             || fabsf(mean - gyro_bias[i]) > GYRO_DRIFT_DPS * gyro_coeff)
+            {
+                still = false;
+            }
+        }
+
+        if (still)
+        {
+            for (i = 0; i < GYRO_AXES; ++i)
+            {
+                gyro_bias[i] = win_sum[i] / win_count;
+            }
+        }
+        ResetGyroWindow();
+    }
+
+    if (!active)
+    {
+        p3ds_gyro_turn = p3ds_gyro_look = 0.0f;
+        return;
+    }
+
+    for (i = 0; i < GYRO_AXES; ++i)
+    {
+        dps[i] = (raw[i] - gyro_bias[i]) / gyro_coeff;
+        if (fabsf(dps[i]) < GYRO_DEADZONE_DPS)
+        {
+            dps[i] = 0.0f;
+        }
+    }
+
+    if (gyro_sensitivity < 1) gyro_sensitivity = 1;
+    if (gyro_sensitivity > 16) gyro_sensitivity = 16;
+    gain = gyro_sensitivity / 4.0f;
+    turn = gyro_style ? dps[1] : dps[0];
+
+    p3ds_gyro_turn += turn * dt * gain;
+    if (gyro_aim >= 2)
+    {
+        p3ds_gyro_look += dps[2] * dt * gain;
+    }
+
+    if (p3ds_gyro_turn > GYRO_MAX_ACCUM) p3ds_gyro_turn = GYRO_MAX_ACCUM;
+    if (p3ds_gyro_turn < -GYRO_MAX_ACCUM) p3ds_gyro_turn = -GYRO_MAX_ACCUM;
+    if (p3ds_gyro_look > GYRO_MAX_ACCUM) p3ds_gyro_look = GYRO_MAX_ACCUM;
+    if (p3ds_gyro_look < -GYRO_MAX_ACCUM) p3ds_gyro_look = -GYRO_MAX_ACCUM;
+}
+
 static int ScaleAxis(int value, int range)
 {
     int dead = range * DEADZONE_PCT / 100;
@@ -176,6 +379,24 @@ static void HandleTouch(void)
     bx = tp.px;
     by = tp.py * SCREENHEIGHT / 240;
     bar_y = I_HudOnBottom() ? P3DS_INVBAR_Y : 160;
+
+    // Weapon selector: press that weapon's number key for a tic.
+    slot = SB_WeaponSlotAt(bx, by);
+    if (slot >= 0)
+    {
+        static int *const weapon_key[] = {
+            &key_weapon1, &key_weapon2, &key_weapon3, &key_weapon4,
+            &key_weapon5, &key_weapon6, &key_weapon7,
+        };
+
+        if (touch_release_key)
+        {
+            PostKey(touch_release_key, false);
+        }
+        PostKey(*weapon_key[slot], true);
+        touch_release_key = *weapon_key[slot];
+        return;
+    }
 
     if (by < bar_y || by >= bar_y + P3DS_INVBAR_H
      || bx < 50 || bx >= 50 + 7 * 31)
@@ -225,6 +446,8 @@ void P3DS_PollInput(void)
     down = hidKeysDown();
     up = hidKeysUp();
     in_menu = MenuActive || askforquit;
+
+    UpdateGyro(!in_menu && !paused && gamestate == GS_LEVEL);
 
     if (touch_release_key)
     {
@@ -347,6 +570,10 @@ void I_BindInputVariables(void)
     M_BindIntVariable("3ds_button_dleft",  &btn_dleft);
     M_BindIntVariable("3ds_button_dright", &btn_dright);
     M_BindIntVariable("3ds_button_select", &btn_select);
+
+    M_BindIntVariable("gyro_aim",          &gyro_aim);
+    M_BindIntVariable("gyro_style",        &gyro_style);
+    M_BindIntVariable("gyro_sensitivity",  &gyro_sensitivity);
 }
 
 void I_ReadMouse(void)

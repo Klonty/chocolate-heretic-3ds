@@ -69,6 +69,9 @@ typedef enum
     MENU_FILES,
     MENU_LOAD,
     MENU_SAVE,
+#ifdef __3DS__
+    MENU_GYRO,
+#endif
     MENU_NONE
 } MenuType_t;
 
@@ -100,9 +103,15 @@ static boolean SCNetCheck(int option);
 static boolean SCQuitGame(int option);
 static boolean SCEpisode(int option);
 static boolean SCSkill(int option);
+#ifndef __3DS__
 static boolean SCMouseSensi(int option);
+#endif
 #ifdef __3DS__
 static boolean SCStereoDepth(int option);
+static boolean SCGyroAim(int option);
+static boolean SCGyroStyle(int option);
+static boolean SCGyroSensi(int option);
+static void DrawGyroMenu(void);
 #endif
 static boolean SCSfxVolume(int option);
 static boolean SCMusicVolume(int option);
@@ -255,8 +264,14 @@ static Menu_t SkillMenu = {
 static MenuItem_t OptionsItems[] = {
     {ITT_EFUNC, "END GAME", SCEndGame, 0, MENU_NONE},
     {ITT_EFUNC, "MESSAGES : ", SCMessages, 0, MENU_NONE},
+#ifdef __3DS__
+    // No mouse on the 3DS; the slot leads to the gyro settings instead.
+    {ITT_SETMENU, "GYRO AIM...", NULL, 0, MENU_GYRO},
+    {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
+#else
     {ITT_LRFUNC, "MOUSE SENSITIVITY", SCMouseSensi, 0, MENU_NONE},
     {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
+#endif
     {ITT_SETMENU, "MORE...", NULL, 0, MENU_OPTIONS2}
 };
 
@@ -282,7 +297,11 @@ static MenuItem_t Options2Items[] = {
 };
 
 static Menu_t Options2Menu = {
+#ifdef __3DS__
+    70, 20,     // room for the 25-notch 3D DEPTH slider
+#else
     90, 20,
+#endif
     DrawOptions2Menu,
 #ifdef __3DS__
     8, Options2Items,
@@ -293,6 +312,23 @@ static Menu_t Options2Menu = {
     MENU_OPTIONS
 };
 
+#ifdef __3DS__
+static MenuItem_t GyroItems[] = {
+    {ITT_LRFUNC, "GYRO :", SCGyroAim, 0, MENU_NONE},
+    {ITT_LRFUNC, "STYLE :", SCGyroStyle, 0, MENU_NONE},
+    {ITT_LRFUNC, "SENSITIVITY", SCGyroSensi, 0, MENU_NONE},
+    {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
+};
+
+static Menu_t GyroMenu = {
+    70, 50,
+    DrawGyroMenu,
+    4, GyroItems,
+    0,
+    MENU_OPTIONS
+};
+#endif
+
 static Menu_t *Menus[] = {
     &MainMenu,
     &EpisodeMenu,
@@ -301,7 +337,10 @@ static Menu_t *Menus[] = {
     &Options2Menu,
     &FilesMenu,
     &LoadMenu,
-    &SaveMenu
+    &SaveMenu,
+#ifdef __3DS__
+    &GyroMenu,
+#endif
 };
 
 //---------------------------------------------------------------------------
@@ -715,8 +754,25 @@ static void DrawOptionsMenu(void)
     {
         MN_DrTextB(DEH_String("OFF"), 196, 50);
     }
+#ifndef __3DS__
     DrawSlider(&OptionsMenu, 3, 10, mouseSensitivity);
+#endif
 }
+
+#ifdef __3DS__
+static void DrawGyroMenu(void)
+{
+    static const char *aim_names[] = { "OFF", "TURN", "TURN+LOOK" };
+    static const char *style_names[] = { "WHEEL", "CAMERA" };
+    int aim = gyro_aim >= 0 && gyro_aim <= 2 ? gyro_aim : 0;
+    int style = gyro_style ? 1 : 0;
+
+    MN_DrTextB(DEH_String(aim_names[aim]), GyroMenu.x + 80, GyroMenu.y);
+    MN_DrTextB(DEH_String(style_names[style]), GyroMenu.x + 80,
+               GyroMenu.y + ITEM_HEIGHT);
+    DrawSlider(&GyroMenu, 3, 16, gyro_sensitivity - 1);
+}
+#endif
 
 //---------------------------------------------------------------------------
 //
@@ -730,7 +786,7 @@ static void DrawOptions2Menu(void)
     DrawSlider(&Options2Menu, 3, 16, snd_MaxVolume);
     DrawSlider(&Options2Menu, 5, 16, snd_MusicVolume);
 #ifdef __3DS__
-    DrawSlider(&Options2Menu, 7, 16, stereo_separation / 16);
+    DrawSlider(&Options2Menu, 7, 25, stereo_separation / 16);
 #endif
 }
 
@@ -1011,7 +1067,7 @@ static boolean SCStereoDepth(int option)
 {
     if (option == RIGHT_DIR)
     {
-        if (stereo_separation < 240)
+        if (stereo_separation < 384)
         {
             stereo_separation += 16;
         }
@@ -1022,8 +1078,46 @@ static boolean SCStereoDepth(int option)
     }
     return true;
 }
+
+// Off -> turn -> turn+look, wrapping, so A alone can step through them.
+static boolean SCGyroAim(int option)
+{
+    if (option == RIGHT_DIR)
+    {
+        gyro_aim = gyro_aim >= 2 ? 0 : gyro_aim + 1;
+    }
+    else
+    {
+        gyro_aim = gyro_aim <= 0 ? 2 : gyro_aim - 1;
+    }
+    return true;
+}
+
+static boolean SCGyroStyle(int option)
+{
+    (void) option;
+    gyro_style = !gyro_style;
+    return true;
+}
+
+static boolean SCGyroSensi(int option)
+{
+    if (option == RIGHT_DIR)
+    {
+        if (gyro_sensitivity < 16)
+        {
+            gyro_sensitivity++;
+        }
+    }
+    else if (gyro_sensitivity > 1)
+    {
+        gyro_sensitivity--;
+    }
+    return true;
+}
 #endif
 
+#ifndef __3DS__
 static boolean SCMouseSensi(int option)
 {
     if (option == RIGHT_DIR)
@@ -1039,6 +1133,7 @@ static boolean SCMouseSensi(int option)
     }
     return true;
 }
+#endif
 
 //---------------------------------------------------------------------------
 //

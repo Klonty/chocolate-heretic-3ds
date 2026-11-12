@@ -1598,9 +1598,13 @@ void AM_DrawToBuffer(pixel_t *buf)
     // (top) and the inventory bar (bottom).
     saved_fb = fb;
     saved_vb = I_VideoBuffer;
+    // The weapon selector covers the right edge, so the map moves left by
+    // half its width to keep the player in the middle of what is visible
+    // (the buffer is wider than the 320 columns shown).
     fb = buf + (I_HudOnBottom()
                 ? (P3DS_MAP_Y + (P3DS_MAP_H - finit_height) / 2) * SCREENWIDTH
-                : 0);
+                : 0)
+             - SB_WeaponBarWidth() / 2;
     V_UseBuffer(buf);
     I_VideoBuffer = fb;
 

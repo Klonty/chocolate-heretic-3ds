@@ -1362,4 +1362,261 @@ void SB_DrawToBuffer(pixel_t *buf)
     }
 }
 
+//
+// Nintendo 3DS: weapon selector on the right edge of the automap band of
+// the bottom screen.  One slot per weapon key (1-7); tapping a slot
+// presses that key.  weapon_bar picks one column of seven slots or two
+// columns of four.
+//
+
+#define WB_BG        0      // panel background (black)
+#define WB_LINE      8      // slot separators (dark grey)
+#define WB_SELECTED  96     // current weapon background (brown)
+#define WB_FRAME     143    // current weapon frame (yellow)
+#define WB_STAFF     80     // staff pictogram: wood
+#define WB_STAFF_LIT 83     //   highlight
+#define WB_STAFF_KNOB 129   //   gold knob
+#define WB_FIST      20     // gauntlet pictogram: grey
+#define WB_FIST_LIT  27     //   highlight
+
+typedef struct
+{
+    int x, y, w, h;
+} wb_rect_t;
+
+static pixel_t *wb_buf;     // left edge of the UI area in the bottom buffer
+
+static void WbFill(int x, int y, int w, int h, int c)
+{
+    int i;
+
+    for (; h > 0; --h, ++y)
+    {
+        for (i = 0; i < w; ++i)
+        {
+            wb_buf[y * SCREENWIDTH + x + i] = c;
+        }
+    }
+}
+
+static void WbBox(int x, int y, int w, int h, int c)
+{
+    WbFill(x, y, w, 1, c);
+    WbFill(x, y + h - 1, w, 1, c);
+    WbFill(x, y, 1, h, c);
+    WbFill(x + w - 1, y, 1, h, c);
+}
+
+// The automap band the panel sits in: rows P3DS_MAP_Y.. with the status
+// bar on the bottom screen, otherwise from the top down to the inventory
+// bar.
+static void WeaponBand(int *y0, int *h)
+{
+    if (I_HudOnBottom())
+    {
+        *y0 = P3DS_MAP_Y;
+        *h = P3DS_MAP_H;
+    }
+    else
+    {
+        *y0 = 0;
+        *h = 158;
+    }
+}
+
+int SB_WeaponBarWidth(void)
+{
+    if (!bottom_screen)
+    {
+        return 0;
+    }
+
+    switch (weapon_bar)
+    {
+        case 1:  return 48;
+        case 2:  return 80;
+        default: return 0;
+    }
+}
+
+// Rectangle of slot (0-6) in UI coordinates.
+static void WeaponSlotRect(int slot, wb_rect_t *r)
+{
+    int y0, h, panel_x;
+
+    WeaponBand(&y0, &h);
+    panel_x = P3DS_UI_W - SB_WeaponBarWidth();
+
+    if (weapon_bar == 2)
+    {
+        r->w = 40;
+        r->h = h / 4;
+        r->x = panel_x + (slot % 2) * r->w;
+        r->y = y0 + (slot / 2) * r->h;
+    }
+    else
+    {
+        r->w = 48;
+        r->h = h / 7;
+        r->x = panel_x;
+        r->y = y0 + (h - 7 * r->h) / 2 + slot * r->h;
+    }
+}
+
+int SB_WeaponSlotAt(int x, int y)
+{
+    wb_rect_t r;
+    int slot;
+
+    if (SB_WeaponBarWidth() == 0)
+    {
+        return -1;
+    }
+
+    for (slot = 0; slot < 7; ++slot)
+    {
+        WeaponSlotRect(slot, &r);
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+        {
+            return slot;
+        }
+    }
+
+    return -1;
+}
+
+// Up to three small digits, right-aligned so the last one ends at x.
+static void DrSmallNumberRight(int val, int x, int y)
+{
+    if (val < 0)
+    {
+        val = 0;
+    }
+
+    do
+    {
+        x -= 4;
+        V_DrawPatch(x, y, PatchSmNumbers[val % 10]);
+        val /= 10;
+    } while (val > 0 && x > 4);
+}
+
+// Weapon reached by weapon key slot+1 (key 1 is staff or gauntlets).
+static boolean SlotOwned(int slot)
+{
+    if (slot == 0)
+    {
+        return true;
+    }
+    return CPlayer->weaponowned[slot];
+}
+
+static boolean SlotReady(int slot)
+{
+    weapontype_t w = CPlayer->readyweapon;
+
+    if (slot == 0)
+    {
+        return w == wp_staff || w == wp_gauntlets;
+    }
+    return w == slot;
+}
+
+static void DrawWeaponSlot(int slot)
+{
+    wb_rect_t r;
+    boolean owned = SlotOwned(slot);
+    boolean two_col = weapon_bar == 2;
+    char num[2];
+    int icon_x, icon_y;
+
+    WeaponSlotRect(slot, &r);
+
+    if (SlotReady(slot))
+    {
+        WbFill(r.x, r.y, r.w, r.h, WB_SELECTED);
+        WbBox(r.x, r.y, r.w, r.h, WB_FRAME);
+    }
+    else
+    {
+        WbBox(r.x, r.y, r.w, r.h, WB_LINE);
+    }
+
+    num[0] = '1' + slot;
+    num[1] = '\0';
+    MN_DrTextA(num, r.x + 3, two_col ? r.y + 2 : r.y + (r.h - 9) / 2);
+
+    // The ammo icons are made for a 24x16 box (their offsets centre them
+    // in it), which is where the status bar draws them.
+    if (two_col)
+    {
+        icon_x = r.x + (r.w - 24) / 2;
+        icon_y = r.y + 6;
+    }
+    else
+    {
+        icon_x = r.x + 11;
+        icon_y = r.y + (r.h - 16) / 2;
+    }
+
+    if (slot == 0)
+    {
+        // The staff has no small icon in the game; draw a little one:
+        // a diagonal stick with a gold knob, plus a grey fist once the
+        // gauntlets (same key) have been picked up.
+        int cx = two_col ? r.x + r.w / 2 : r.x + 23;
+        int cy = two_col ? r.y + 16 : r.y + r.h / 2;
+        int i;
+
+        for (i = -5; i <= 5; ++i)
+        {
+            WbFill(cx + i, cy - i, 1, 2, WB_STAFF);
+            WbFill(cx + i + 1, cy - i, 1, 1, WB_STAFF_LIT);
+        }
+        WbFill(cx + 5, cy - 7, 3, 3, WB_STAFF_KNOB);
+
+        if (CPlayer->weaponowned[wp_gauntlets])
+        {
+            WbFill(cx + 7, cy + 1, 5, 5, WB_FIST);
+            WbFill(cx + 7, cy + 1, 5, 1, WB_FIST_LIT);
+        }
+        return;
+    }
+
+    // Weapons not picked up yet show only their number.
+    if (owned)
+    {
+        patch_t *icon = W_CacheLumpName(DEH_String(ammopic[slot - 1]),
+                                        PU_CACHE);
+
+        V_DrawPatch(icon_x, icon_y, icon);
+        DrSmallNumberRight(CPlayer->ammo[wpnlev1info[slot].ammo],
+                           r.x + r.w - 2,
+                           two_col ? r.y + r.h - 8 : r.y + r.h - 7);
+    }
+}
+
+void SB_DrawWeaponsTo(pixel_t *buf)
+{
+    int y0, h, w, slot;
+
+    w = SB_WeaponBarWidth();
+    if (w == 0 || gamestate != GS_LEVEL)
+    {
+        return;
+    }
+
+    CPlayer = &players[consoleplayer];
+    WeaponBand(&y0, &h);
+
+    wb_buf = buf;
+    V_UseBuffer(buf);
+    WbFill(P3DS_UI_W - w, y0, w, h, WB_BG);
+    for (slot = 0; slot < 7; ++slot)
+    {
+        DrawWeaponSlot(slot);
+    }
+    V_RestoreBuffer();
+}
+
 #endif

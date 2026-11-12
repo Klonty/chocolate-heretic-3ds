@@ -77,6 +77,24 @@ Every in-game button can be rebound in `chocolate-heretic.cfg`: `3ds_button_a`,
 `3ds_button_select` hold Doom key codes (the same values the `key_*`
 entries use). Menu keys are fixed.
 
+### Gyro aiming
+
+Options → **GYRO AIM...** turns on aiming by moving the console. It is off
+by default and works on top of the sticks and buttons:
+
+- **GYRO**: OFF, TURN (left/right only) or TURN+LOOK (also up/down).
+- **STYLE**: WHEEL (tilt the console like a steering wheel) or CAMERA (turn it
+  left/right, like a camera).
+- **SENSITIVITY**: 4 notches from the left moves the view as far as the
+  console moves; the default is twice that.
+
+The gyro calibrates itself in the first half second after it is switched
+on and whenever the console is held still for a second, so hold it steady
+for a moment after turning it on. Moving the console also moves you out of
+the 3D sweet spot; turning the 3D slider down helps when using the gyro a
+lot. The settings are stored as `gyro_aim`, `gyro_style` and
+`gyro_sensitivity` in `chocolate-heretic.cfg`.
+
 ## Screen layout
 
 The 3DS top screen is 400×240 per eye, and the 3D view is rendered at the
@@ -94,6 +112,12 @@ By default the bottom screen is the HUD, laid out like this:
 | 158–199 | inventory bar |
 
 Tapping a slot in the inventory bar selects it; tapping it again uses it.
+
+A weapon selector sits on the right of the automap: one slot per weapon key
+(1–7) with its ammo icon and count, the current weapon framed in yellow.
+Tapping a slot switches to that weapon; ZR/ZL still cycle. `weapon_bar` in
+`chocolate-heretic.cfg` picks the layout: `1` one column (default), `2` two
+columns, `0` off.
 
 Two settings in `chocolate-heretic.cfg` change this:
 
@@ -118,7 +142,7 @@ How deep the scene goes is set with the **3D DEPTH** slider in Options →
 More (the second options page); the hardware slider scales it smoothly from
 flat to full. It is stored as `stereo_separation` in `chocolate-heretic.cfg`
 (how far behind the screen distant scenery goes at full slider, in 1/16
-pixel per eye, 0–240, default 96). `stereo_screen_distance` (map units,
+pixel per eye, 0–384, default 96). `stereo_screen_distance` (map units,
 default 16) is the distance that sits on the glass; anything nearer would
 come out of the screen. `stereo_3d 0` ignores the hardware slider entirely.
 

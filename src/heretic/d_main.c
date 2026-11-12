@@ -230,6 +230,7 @@ void D_Display(void)
                     SB_DrawToBuffer(I_BottomBuffer + P3DS_UI_XOFF);
                     SB_DrawInventoryTo(I_BottomBuffer + P3DS_UI_XOFF);
                 }
+                SB_DrawWeaponsTo(I_BottomBuffer + P3DS_UI_XOFF);
             }
 #endif
             break;

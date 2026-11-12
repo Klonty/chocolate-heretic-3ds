@@ -33,6 +33,9 @@
 #include "p_local.h"
 #include "s_sound.h"
 #include "v_video.h"
+#ifdef __3DS__
+#include "port3ds.h"
+#endif
 
 // Macros
 
@@ -698,6 +701,18 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
         cmd->angleturn -= mousex * 0x8;
     }
 
+#ifdef __3DS__
+    // Gyro turning: whole angle units now, the remainder next tic.
+    {
+        int turn = (int) (p3ds_gyro_turn * (65536.0f / 360.0f));
+
+        if (turn > 16384) turn = 16384;
+        if (turn < -16384) turn = -16384;
+        cmd->angleturn += turn;
+        p3ds_gyro_turn -= turn * (360.0f / 65536.0f);
+    }
+#endif
+
     // No mouse movement in previous frame?
 
     if (mousex == 0)
@@ -719,6 +734,23 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
 
     cmd->forwardmove += forward;
     cmd->sidemove += side;
+#ifdef __3DS__
+    // Gyro looking.  Heretic looks in steps of 5 lookdir units (pixels of
+    // view shift at full screen), at most 7 steps a tic; one degree is
+    // about 2.8 units with the 160-pixel focal length.
+    if (look != TOCENTER)
+    {
+        const float units_per_degree = 2.8f;
+        int steps = (int) (p3ds_gyro_look * units_per_degree / 5.0f);
+        int wanted = look + steps;
+
+        if (wanted > 7) wanted = 7;
+        if (wanted < -7) wanted = -7;
+        steps = wanted - look;
+        look = wanted;
+        p3ds_gyro_look -= steps * 5.0f / units_per_degree;
+    }
+#endif
     if (players[consoleplayer].playerstate == PST_LIVE)
     {
         if (look < 0)
