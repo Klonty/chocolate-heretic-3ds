@@ -29,6 +29,13 @@ all changes to the shared code are behind `#ifdef __3DS__`.
    - `heretic.cia`: install it with FBI and it appears on the HOME menu, or
    - `heretic.3dsx`: copy it to `sdmc:/3ds/heretic/` and start it from the
      Homebrew Launcher.
+
+   <img src="cia-qr.png" alt="QR code for heretic.cia" width="192" align="right">
+
+   Or install straight from the 3DS: in FBI choose **Remote Install → Scan
+   QR Code** and scan this code, which always points at the latest
+   `heretic.cia`.
+
 2. Copy a Heretic IWAD (`HERETIC.WAD`, `heretic1.wad` or `blasphem.wad`) to
    `sdmc:/3ds/heretic/` on your SD card, or just start the game: with no
    IWAD it offers to download the free
