@@ -24,17 +24,18 @@ all changes to the shared code are behind `#ifdef __3DS__`.
 
 ## Quick start
 
-1. Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the
-   `3ds-dev` package group.
-2. Build:
+1. Download the latest build from
+   [Releases](https://github.com/Klonty/chocolate-heretic-3ds/releases):
+   - `heretic.cia`: install it with FBI and it appears on the HOME menu, or
+   - `heretic.3dsx`: copy it to `sdmc:/3ds/heretic/` and start it from the
+     Homebrew Launcher.
+2. Copy a Heretic IWAD (`HERETIC.WAD`, `heretic1.wad` or `blasphem.wad`) to
+   `sdmc:/3ds/heretic/` on your SD card. The game creates the folder on its
+   first start and tells you which files it looks for.
 
-   ```
-   cd port3ds
-   make
-   ```
-
-3. Copy `heretic.3dsx` and a vanilla Heretic IWAD to `sdmc:/3ds/heretic/` on
-   your SD card and start it from the Homebrew Launcher.
+To build it yourself, install
+[devkitPro](https://devkitpro.org/wiki/Getting_Started) with the `3ds-dev`
+package group and run `make` in `port3ds/` (`make cia` for the `.cia`).
 
 ## Status
 

@@ -3,6 +3,10 @@
 #
 # Run "make" from this directory with devkitPro installed.  Produces
 # heretic.3dsx (and heretic.elf/heretic.smdh) in this directory.
+#
+# "make cia" also builds heretic.cia for installing to the HOME menu; it
+# needs makerom and bannertool on the PATH.  The version shown on the 3DS
+# comes from VERSION_MAJOR/MINOR/MICRO (e.g. make cia VERSION_MINOR=4).
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
@@ -12,6 +16,10 @@ $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>dev
 endif
 
 TOPDIR ?= $(CURDIR)
+
+# HOME menu / Homebrew Launcher art (drawn by meta/make_art.py).
+APP_ICON    := $(TOPDIR)/meta/icon.png
+
 include $(DEVKITARM)/3ds_rules
 
 TARGET      := heretic
@@ -71,7 +79,7 @@ export LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 export _3DSXFLAGS := --smdh=$(OUTPUT).smdh
 
-.PHONY: $(BUILD) clean all
+.PHONY: $(BUILD) clean all cia
 
 all: $(BUILD)
 
@@ -79,9 +87,25 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
+VERSION_MAJOR ?= 0
+VERSION_MINOR ?= 0
+VERSION_MICRO ?= 0
+
+cia: $(BUILD)
+	@bannertool makebanner -i meta/banner.png -a meta/banner.wav \
+		-o $(BUILD)/banner.bnr
+	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" \
+		-p "$(APP_AUTHOR)" -i meta/icon.png -o $(BUILD)/icon.icn
+	@makerom -f cia -o $(TARGET).cia -target t -exefslogo \
+		-elf $(TARGET).elf -rsf meta/heretic.rsf \
+		-icon $(BUILD)/icon.icn -banner $(BUILD)/banner.bnr \
+		-major $(VERSION_MAJOR) -minor $(VERSION_MINOR) \
+		-micro $(VERSION_MICRO)
+	@echo built ... $(TARGET).cia
+
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(TARGET).cia
 
 #---------------------------------------------------------------------------------
 else

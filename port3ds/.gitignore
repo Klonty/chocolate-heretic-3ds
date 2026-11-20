@@ -2,6 +2,7 @@ build/
 *.3dsx
 *.elf
 *.smdh
+*.cia
 
 # Hand-written for the 3DS build (the top-level .gitignore ignores the
 # Makefile and config.h that autotools/CMake generate elsewhere).

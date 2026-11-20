@@ -40,12 +40,18 @@ the 3DS platform layer that replaces SDL.
 
 ## Installing
 
-1. Copy `heretic.3dsx` to `sdmc:/3ds/heretic/heretic.3dsx`.
-2. Copy your IWAD to `sdmc:/3ds/heretic/` (`HERETIC.WAD`, `heretic1.wad`
-   or `blasphem.wad`).
-3. Start it from the Homebrew Launcher.
+There are two builds; pick one (or both, they share everything):
 
-Config files and savegames also go to `sdmc:/3ds/heretic/`. The startup log
+- **`heretic.cia`**: install it with FBI. Heretic then appears on the HOME
+  menu with its own icon.
+- **`heretic.3dsx`**: copy it to `sdmc:/3ds/heretic/heretic.3dsx` and start
+  it from the Homebrew Launcher.
+
+Then copy your IWAD to `sdmc:/3ds/heretic/` (`HERETIC.WAD`, `heretic1.wad`
+or `blasphem.wad`). The game creates that folder on its first start; if no
+IWAD is there it says which files it looks for and waits for START.
+
+Config files and savegames also go to `sdmc:/3ds/heretic/`, for both builds. The startup log
 is shown on the bottom screen and written to `sdmc:/3ds/heretic/heretic.log`,
 which is the first place to look when something goes wrong.
 
@@ -163,6 +169,15 @@ make
 
 This produces `heretic.3dsx`. Only libctru is used; there are no portlib
 dependencies.
+
+`make cia` also builds `heretic.cia`. It needs two tools that are not part of
+devkitPro, on the PATH (for example in `devkitPro/tools/bin`):
+[makerom](https://github.com/3DSGuy/Project_CTR/releases) (v0.19.0) and
+[bannertool](https://github.com/Epicpkmn11/bannertool/releases) (v1.2.2).
+The version shown on the 3DS is set with `VERSION_MAJOR`, `VERSION_MINOR`
+and `VERSION_MICRO` (for example `make cia VERSION_MINOR=4`). The HOME menu
+icon and banner are in `meta/`, drawn by `meta/make_art.py`; the title is
+described in `meta/heretic.rsf`.
 
 ## How the port is put together
 
