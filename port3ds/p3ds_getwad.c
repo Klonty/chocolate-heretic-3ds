@@ -260,6 +260,27 @@ static boolean ConnOpen(conn_t *c, const char *host)
 
     c->fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
+    // The 3DS's default receive buffer is small, which caps the TCP window
+    // and makes a distant server crawl (window / round trip).  Ask for a
+    // big one before connecting so the window is negotiated up front.
+    if (c->fd >= 0)
+    {
+        static const int sizes[] = { 0x40000, 0x20000, 0x10000 };
+        unsigned int i;
+
+        for (i = 0; i < sizeof(sizes) / sizeof(*sizes); ++i)
+        {
+            int size = sizes[i];
+
+            if (setsockopt(c->fd, SOL_SOCKET, SO_RCVBUF, &size,
+                           sizeof(size)) == 0)
+            {
+                printf("Receive buffer: %i KB.\n", size / 1024);
+                break;
+            }
+        }
+    }
+
     if (c->fd < 0 || connect(c->fd, res->ai_addr, res->ai_addrlen) != 0)
     {
         freeaddrinfo(res);
@@ -772,7 +793,20 @@ static void Job(void *arg)
     }
     else if (TLSInit())
     {
-        ok = Download() && Unpack();
+        u64 start = osGetTime(), unpack_start;
+
+        ok = Download();
+        unpack_start = osGetTime();
+        if (ok)
+        {
+            u64 ms = unpack_start - start;
+
+            printf("Downloaded in %.1f s (%i KB/s).\n", ms / 1000.0,
+                   ms > 0 ? (int) (ZIP_SIZE / ms) : 0);
+            ok = Unpack();
+            printf("Unpacked in %.1f s.\n",
+                   (osGetTime() - unpack_start) / 1000.0);
+        }
     }
 
     TLSShutdown();
@@ -1303,6 +1337,10 @@ typedef enum
     SCREEN_DONE,
 } screen_t;
 
+// The top picture never changes: draw it into each of the two buffers
+// once, not every frame.
+static int top_drawn;
+
 static void DrawTop(void)
 {
     u16 *left = (u16 *) gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
@@ -1321,9 +1359,15 @@ static boolean StartJob(void)
     job_state = JOB_CONNECTING;
     job_done = job_total = 0;
 
-    // Below the screens' priority, on the application core.
+    // On the New 3DS's spare core if there is one, so drawing the screens
+    // doesn't slow the download; otherwise just below the screens'
+    // priority on the application core.
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-    job_thread = threadCreate(Job, NULL, 0x20000, prio + 1, -2, false);
+    job_thread = threadCreate(Job, NULL, 0x20000, prio, 2, false);
+    if (job_thread == NULL)
+    {
+        job_thread = threadCreate(Job, NULL, 0x20000, prio + 1, -2, false);
+    }
 
     if (job_thread == NULL)
     {
@@ -1352,11 +1396,16 @@ static void UIBegin(void)
     P3DS_ConsoleOff();
     gfxSetScreenFormat(GFX_BOTTOM, GSP_RGB565_OES);
     gfxSetDoubleBuffering(GFX_BOTTOM, true);
+    top_drawn = 0;
 }
 
 static void UIPresent(void)
 {
-    DrawTop();
+    if (top_drawn < 2)
+    {
+        DrawTop();
+        ++top_drawn;
+    }
     gfxFlushBuffers();
     gfxSwapBuffers();
     gspWaitForVBlank();
