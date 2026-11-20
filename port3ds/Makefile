@@ -109,16 +109,9 @@ VERSION_MINOR ?= 0
 VERSION_MICRO ?= 0
 
 cia: $(BUILD)
-	@bannertool makebanner -i meta/banner.png -a meta/banner.wav \
-		-o $(BUILD)/banner.bnr
-	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" \
-		-p "$(APP_AUTHOR)" -i meta/icon.png -o $(BUILD)/icon.icn
-	@makerom -f cia -o $(TARGET).cia -target t -exefslogo \
-		-elf $(TARGET).elf -rsf meta/heretic.rsf \
-		-icon $(BUILD)/icon.icn -banner $(BUILD)/banner.bnr \
-		-major $(VERSION_MAJOR) -minor $(VERSION_MINOR) \
-		-micro $(VERSION_MICRO)
-	@echo built ... $(TARGET).cia
+	@sh meta/make_cia.sh $(TARGET).elf $(TARGET).cia "$(APP_TITLE)" \
+		"$(APP_DESCRIPTION)" "$(APP_AUTHOR)" \
+		$(VERSION_MAJOR) $(VERSION_MINOR) $(VERSION_MICRO)
 
 clean:
 	@echo clean ...

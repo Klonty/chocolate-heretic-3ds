@@ -1,7 +1,7 @@
 name: 3DS build
 
-# Builds heretic.3dsx and heretic.cia with devkitARM on every push and pull
-# request.  Pushing a version tag (v*) also attaches the build to that tag's
+# Builds heretic.3dsx with devkitARM and packs heretic.cia on every push
+# and pull request.  Pushing a version tag (v*) also attaches the build to that tag's
 # GitHub release, creating the release if it does not exist yet.
 
 on:
@@ -26,7 +26,7 @@ env:
 
 jobs:
   build:
-    name: Build heretic.3dsx and heretic.cia
+    name: Build heretic.3dsx
     runs-on: ubuntu-latest
     container: devkitpro/devkitarm:latest
 
@@ -37,21 +37,47 @@ jobs:
       - name: Build
         run: make -C port3ds -j"$(nproc)"
 
-      # makerom and bannertool are not part of devkitPro.
+      - name: Upload 3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: heretic-3dsx-${{ github.sha }}
+          path: |
+            port3ds/heretic.3dsx
+            port3ds/heretic.elf
+          if-no-files-found: error
+
+  # The .cia is packed outside the devkitARM container: makerom's Linux
+  # build needs a newer glibc than the container has.  It only needs the
+  # ELF from the build job and the files in port3ds/meta/.
+  cia:
+    name: Pack heretic.cia
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download 3dsx
+        uses: actions/download-artifact@v4
+        with:
+          name: heretic-3dsx-${{ github.sha }}
+          path: port3ds
+
       - name: Install CIA tools
         run: |
-          command -v unzip >/dev/null || (apt-get update && apt-get install -y unzip)
           mkdir -p "$RUNNER_TEMP/tools" && cd "$RUNNER_TEMP/tools"
           curl -fsSL -o makerom.zip "$MAKEROM_URL"
           curl -fsSL -o bannertool.zip "$BANNERTOOL_URL"
           unzip -o -q makerom.zip
           unzip -o -q bannertool.zip
-          install -m 755 makerom /usr/local/bin/makerom
-          install -m 755 linux-x86_64/bannertool /usr/local/bin/bannertool
+          sudo install -m 755 makerom /usr/local/bin/makerom
+          sudo install -m 755 linux-x86_64/bannertool /usr/local/bin/bannertool
 
       # The version shown on the 3DS comes from the tag (v0.4 -> 0.4.0);
       # untagged builds are 0.0.0.
       - name: Build CIA
+        working-directory: port3ds
         run: |
           ver=0.0.0
           case "$GITHUB_REF" in
@@ -60,8 +86,11 @@ jobs:
           IFS=. read -r major minor micro <<EOF
           $ver
           EOF
-          make -C port3ds cia VERSION_MAJOR="${major:-0}" \
-            VERSION_MINOR="${minor:-0}" VERSION_MICRO="${micro:-0}"
+          title=$(sed -n 's/^APP_TITLE *:= *//p' Makefile)
+          desc=$(sed -n 's/^APP_DESCRIPTION *:= *//p' Makefile)
+          author=$(sed -n 's/^APP_AUTHOR *:= *//p' Makefile)
+          sh meta/make_cia.sh heretic.elf heretic.cia "$title" "$desc" \
+            "$author" "${major:-0}" "${minor:-0}" "${micro:-0}"
 
       # heretic.elf carries the debug symbols needed to read a Luma3DS
       # crash dump from this exact build (arm-none-eabi-addr2line).
@@ -77,7 +106,7 @@ jobs:
 
   release:
     name: Attach to release
-    needs: build
+    needs: cia
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
