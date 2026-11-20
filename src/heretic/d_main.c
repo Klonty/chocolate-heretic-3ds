@@ -963,6 +963,32 @@ void D_DoomMain(void)
     {
         iwadfile = D_FindIWAD(IWAD_MASK_HERETIC, &gamemission);
     }
+
+    // Several games on the SD card (e.g. Heretic and Blasphemer): let the
+    // player choose instead of taking the first by priority.
+    if (iwadfile != NULL && !M_CheckParm("-iwad"))
+    {
+        const iwad_t **all = D_FindAllIWADs(IWAD_MASK_HERETIC);
+        const char *paths[4], *titles[4];
+        int count = 0;
+
+        while (all[count] != NULL && count < 4)
+        {
+            paths[count] = D_FindWADByName(all[count]->name);
+            titles[count] = all[count]->description;
+            ++count;
+        }
+
+        if (count > 1)
+        {
+            int chosen = P3DS_ChooseGame(count, paths, titles);
+
+            iwadfile = (char *) paths[chosen];
+            gamemission = all[chosen]->mission;
+        }
+
+        free(all);
+    }
 #endif
 
     if (iwadfile == NULL)

@@ -32,6 +32,12 @@ void P3DS_ConsoleRestore(void);
 // blasphem.wad is in place; quits the program if the player chooses to.
 boolean P3DS_GetGameData(void);
 
+// Game chooser for when several IWADs are present (p3ds_getwad.c): paths
+// are the files, titles their names.  Returns the chosen index (the last
+// choice is remembered); quits the program if the player chooses to.
+int P3DS_ChooseGame(int count, const char *const *paths,
+                    const char *const *titles);
+
 // Create a thread at the main thread's priority plus prio_delta
 // (negative = higher priority), preferring a core the game loop is not
 // running on.  Returns NULL on failure.  The type is libctru's Thread

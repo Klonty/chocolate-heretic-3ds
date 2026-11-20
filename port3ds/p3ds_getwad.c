@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 
 #include "mbedtls/ctr_drbg.h"
@@ -1345,6 +1346,42 @@ static void FinishJob(void)
     }
 }
 
+// Take both screens over from the console.
+static void UIBegin(void)
+{
+    P3DS_ConsoleOff();
+    gfxSetScreenFormat(GFX_BOTTOM, GSP_RGB565_OES);
+    gfxSetDoubleBuffering(GFX_BOTTOM, true);
+}
+
+static void UIPresent(void)
+{
+    DrawTop();
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+    gspWaitForVBlank();
+}
+
+// Blank the top screen (both buffers, so the picture doesn't linger
+// behind the game) and give the bottom one back to the console.
+static void UIEnd(void)
+{
+    int i;
+
+    for (i = 0; i < 2; ++i)
+    {
+        memset(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), 0,
+               getwad_top_bin_size / 2);
+        memset(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), 0,
+               getwad_top_bin_size / 2);
+        gfxFlushBuffers();
+        gfxSwapBuffers();
+        gspWaitForVBlank();
+    }
+
+    P3DS_ConsoleRestore();
+}
+
 boolean P3DS_GetGameData(void)
 {
     static const u32 soc_size = 0x100000;
@@ -1362,11 +1399,7 @@ boolean P3DS_GetGameData(void)
     }
     acInit();
     psInit();
-
-    // Take the bottom screen over from the console.
-    P3DS_ConsoleOff();
-    gfxSetScreenFormat(GFX_BOTTOM, GSP_RGB565_OES);
-    gfxSetDoubleBuffering(GFX_BOTTOM, true);
+    UIBegin();
 
     while (aptMainLoop())
     {
@@ -1484,10 +1517,7 @@ boolean P3DS_GetGameData(void)
                 break;
         }
 
-        DrawTop();
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        UIPresent();
     }
 
     // Leaving: stop a download still running (HOME menu close).
@@ -1504,15 +1534,7 @@ boolean P3DS_GetGameData(void)
         socExit();
     }
     free(soc_buf);
-
-    // Blank the top screen and give the bottom one back to the console.
-    memset(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), 0,
-           getwad_top_bin_size / 2);
-    memset(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), 0,
-           getwad_top_bin_size / 2);
-    gfxFlushBuffers();
-    gfxSwapBuffers();
-    P3DS_ConsoleRestore();
+    UIEnd();
 
     if (result)
     {
@@ -1526,4 +1548,207 @@ boolean P3DS_GetGameData(void)
     }
 
     return result;
+}
+
+// --- Game chooser ------------------------------------------------------------------------
+//
+// Shown when more than one IWAD is on the SD card.  The last choice is
+// remembered in last_game.txt and highlighted next time.
+
+#define LAST_GAME_FILE P3DS_DATA_DIR "/last_game.txt"
+#define MAX_GAMES 4
+
+static const char *BaseName(const char *path)
+{
+    const char *slash = strrchr(path, '/');
+    return slash != NULL ? slash + 1 : path;
+}
+
+// A friendlier title and a one-line description for the known IWADs.
+static void DescribeGame(const char *path, const char *fallback,
+                         const char **title, const char **what)
+{
+    const char *base = BaseName(path);
+
+    if (!strcasecmp(base, "heretic.wad"))
+    {
+        *title = "Heretic";
+        *what = "Full game";
+    }
+    else if (!strcasecmp(base, "heretic1.wad"))
+    {
+        *title = "Heretic (shareware)";
+        *what = "Episode 1";
+    }
+    else if (!strcasecmp(base, "blasphem.wad"))
+    {
+        *title = "Blasphemer";
+        *what = "Free replacement game";
+    }
+    else
+    {
+        *title = fallback;
+        *what = "";
+    }
+}
+
+static void GameCardRect(int i, int count, rect_t *r)
+{
+    int h = count <= 2 ? 58 : count == 3 ? 44 : 34;
+
+    r->x = 14;
+    r->w = 292;
+    r->h = h;
+    r->y = 64 + i * (h + 6);
+}
+
+static void DrawChooser(int count, const char *const *paths,
+                        const char *const *titles, const s64 *sizes,
+                        int selected)
+{
+    int i;
+
+    Background();
+    Title("Choose a game");
+    Text(FONT_BODY, 16, 40, "More than one game was found on the SD card.",
+         C_TEXT);
+
+    for (i = 0; i < count; ++i)
+    {
+        const char *title, *what;
+        char line[128];
+        rect_t r;
+        int text_y;
+
+        GameCardRect(i, count, &r);
+        DescribeGame(paths[i], titles[i], &title, &what);
+        Card(&r, i == selected);
+
+        snprintf(line, sizeof(line), "%s%s%.1f MB", what,
+                 what[0] ? ", " : "", sizes[i] / 1e6);
+
+        // Centre the one or two lines in the card; the file name goes
+        // after the title, leaving room for the A badge on the right.
+        text_y = r.h >= 44 ? r.y + (r.h - 36) / 2 : r.y + (r.h - 18) / 2;
+        Text(FONT_BOLD, 22, text_y, title, C_TEXT);
+        Text(FONT_BODY, 22 + TextWidth(FONT_BOLD, title, strlen(title)) + 8,
+             text_y + 2, BaseName(paths[i]), C_DIM);
+        if (r.h >= 44)
+        {
+            Text(FONT_BODY, 22, text_y + 19, line, C_DIM);
+        }
+
+        if (i == selected)
+        {
+            Badge(r.x + r.w - 24, r.y + r.h / 2, "A", C_GREEN_HI);
+        }
+    }
+
+    Hint(16, 218, "A", "Play");
+    Text(FONT_BODY, 92, 218, "Up/Down: choose", C_DIM);
+    Hint(222, 218, "START", "Quit");
+}
+
+int P3DS_ChooseGame(int count, const char *const *paths,
+                    const char *const *titles)
+{
+    s64 sizes[MAX_GAMES];
+    char last[64] = "";
+    int selected = 0, chosen = -1, i;
+    FILE *f;
+
+    if (count > MAX_GAMES)
+    {
+        count = MAX_GAMES;
+    }
+
+    for (i = 0; i < count; ++i)
+    {
+        struct stat st;
+        sizes[i] = stat(paths[i], &st) == 0 ? (s64) st.st_size : 0;
+    }
+
+    // Start on the game played last time.
+    f = fopen(LAST_GAME_FILE, "r");
+    if (f != NULL)
+    {
+        if (fgets(last, sizeof(last), f) != NULL)
+        {
+            last[strcspn(last, "\r\n")] = '\0';
+        }
+        fclose(f);
+    }
+    for (i = 0; i < count; ++i)
+    {
+        if (!strcasecmp(BaseName(paths[i]), last))
+        {
+            selected = i;
+        }
+    }
+
+    printf("More than one IWAD: showing the game chooser.\n");
+    UIBegin();
+
+    while (chosen < 0 && aptMainLoop())
+    {
+        u32 down;
+
+        hidScanInput();
+        down = hidKeysDown();
+
+        if (down & KEY_START)
+        {
+            break;
+        }
+        if (down & (KEY_DUP | KEY_CPAD_UP))
+        {
+            selected = (selected + count - 1) % count;
+        }
+        if (down & (KEY_DDOWN | KEY_CPAD_DOWN))
+        {
+            selected = (selected + 1) % count;
+        }
+        if (down & KEY_A)
+        {
+            chosen = selected;
+        }
+        if (down & KEY_TOUCH)
+        {
+            touchPosition t;
+
+            hidTouchRead(&t);
+            for (i = 0; i < count; ++i)
+            {
+                rect_t r;
+
+                GameCardRect(i, count, &r);
+                if (Touched(&r, &t))
+                {
+                    selected = chosen = i;
+                }
+            }
+        }
+
+        bot = (u16 *) gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+        DrawChooser(count, paths, titles, sizes, selected);
+        UIPresent();
+    }
+
+    UIEnd();
+
+    if (chosen < 0)
+    {
+        // START (or the HOME menu's close): leave quietly.
+        exit(0);
+    }
+
+    f = fopen(LAST_GAME_FILE, "w");
+    if (f != NULL)
+    {
+        fprintf(f, "%s\n", BaseName(paths[chosen]));
+        fclose(f);
+    }
+
+    printf("Chosen game: %s\n", paths[chosen]);
+    return chosen;
 }

@@ -59,6 +59,11 @@ If no IWAD is there, a first-start screen offers two things:
   free space needed) and starts the game.
 - **Use my own Heretic files**: shows which files to copy where.
 
+With more than one IWAD there (for example `HERETIC.WAD` and
+`blasphem.wad`), a game chooser comes up at start: pick with the D-pad and
+A, or tap a game. The last choice is remembered (`last_game.txt`) and
+highlighted next time. Each game keeps its own savegames.
+
 Config files and savegames also go to `sdmc:/3ds/heretic/`, for both builds. The startup log
 is shown on the bottom screen and written to `sdmc:/3ds/heretic/heretic.log`,
 which is the first place to look when something goes wrong.
