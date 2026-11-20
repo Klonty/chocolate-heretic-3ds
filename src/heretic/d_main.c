@@ -51,6 +51,53 @@
 
 #include "heretic_icon.c"
 
+#ifdef __3DS__
+static boolean HasSaves(const char *dir)
+{
+    char name[256];
+    int i;
+
+    for (i = 0; i < 6; ++i)
+    {
+        M_snprintf(name, sizeof(name), "%s" SAVEGAMENAME "%d.hsg", dir, i);
+        if (M_FileExists(name))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static char *P3DS_SaveGameDir(const char *iwad)
+{
+    const char *sub = !strcasecmp(M_BaseName(iwad), "blasphem.wad")
+                    ? "blasphem.wad" : "heretic.wad";
+    char *top = M_StringJoin(P3DS_DATA_DIR, "/savegames", NULL);
+    char *dir = M_StringJoin(top, "/", sub, "/", NULL);
+    char *root = M_StringDuplicate(P3DS_DATA_DIR "/");
+
+    free(top);
+    if (!strcmp(sub, "blasphem.wad"))
+    {
+        free(root);
+        M_MakeDirectory(P3DS_DATA_DIR "/savegames");
+        M_MakeDirectory(dir);
+        return dir;
+    }
+
+    // A .3dsx started from outside sdmc:/3ds/heretic/ saved into
+    // savegames/heretic.wad/; keep using those if that is where they are.
+    if (!HasSaves(root) && HasSaves(dir))
+    {
+        free(root);
+        return dir;
+    }
+    free(dir);
+    return root;
+}
+#endif
+
+
 #define CT_KEY_GREEN    'g'
 #define CT_KEY_YELLOW   'y'
 #define CT_KEY_RED      'r'
@@ -1127,15 +1174,15 @@ void D_DoomMain(void)
     I_SetWindowTitle(gamedescription);
 
 #ifdef __3DS__
-    // Blasphemer's maps are not Heretic's: keep its saves apart so neither
-    // game loads the other's.  Everything else keeps the old directory.
-    if (!strcasecmp(M_BaseName(iwadfile), "blasphem.wad"))
-    {
-        savegamedir = M_GetSaveGameDir("blasphem.wad");
-    }
-    else
-#endif
+    // A fixed place on the SD card, whichever build started the game (the
+    // generic code keys it off argv[0], which a .cia does not share with
+    // the .3dsx).  Heretic saves sit in the data directory itself, where
+    // the .3dsx in sdmc:/3ds/heretic/ always put them.  Blasphemer's maps
+    // are not Heretic's, so its saves get their own directory.
+    savegamedir = P3DS_SaveGameDir(iwadfile);
+#else
     savegamedir = M_GetSaveGameDir("heretic.wad");
+#endif
 
     I_PrintStartupBanner(gamedescription);
 
