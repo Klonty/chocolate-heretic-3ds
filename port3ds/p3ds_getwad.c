@@ -608,6 +608,7 @@ static boolean Unpack(void)
     z_stream z;
     uLong crc = crc32(0, Z_NULL, 0);
     int r = Z_OK;
+    u64 t, t_read = 0, t_inflate = 0, t_write = 0;
 
     job_state = JOB_UNPACKING;
     job_done = 0;
@@ -639,6 +640,10 @@ static boolean Unpack(void)
         return false;
     }
 
+    // Give the file its full size up front: growing a file a piece at a
+    // time is slow on the 3DS's SD card.
+    ftruncate(fileno(wad), WAD_SIZE);
+
     memset(&z, 0, sizeof(z));
     inflateInit2(&z, -MAX_WBITS);
 
@@ -651,9 +656,11 @@ static boolean Unpack(void)
 
         if (z.avail_in == 0)
         {
+            t = osGetTime();
             z.avail_in = fread(in, 1, sizeof(in), zip);
             z.next_in = in;
-            job_done = ftell(zip);
+            job_done += z.avail_in;
+            t_read += osGetTime() - t;
 
             if (z.avail_in == 0)
             {
@@ -663,22 +670,29 @@ static boolean Unpack(void)
 
         z.next_out = outbuf;
         z.avail_out = sizeof(outbuf);
+        t = osGetTime();
         r = inflate(&z, Z_NO_FLUSH);
+        t_inflate += osGetTime() - t;
 
         if (r != Z_OK && r != Z_STREAM_END)
         {
             break;
         }
 
+        t = osGetTime();
         if (fwrite(outbuf, 1, sizeof(outbuf) - z.avail_out, wad)
             != sizeof(outbuf) - z.avail_out)
         {
             r = Z_ERRNO;
             break;
         }
+        t_write += osGetTime() - t;
 
         crc = crc32(crc, outbuf, sizeof(outbuf) - z.avail_out);
     }
+
+    printf("Unpack: read %.1f s, inflate %.1f s, write %.1f s.\n",
+           t_read / 1000.0, t_inflate / 1000.0, t_write / 1000.0);
 
     inflateEnd(&z);
     fclose(zip);
@@ -1367,6 +1381,11 @@ static boolean StartJob(void)
     if (job_thread == NULL)
     {
         job_thread = threadCreate(Job, NULL, 0x20000, prio + 1, -2, false);
+        printf("Download thread: application core.\n");
+    }
+    else
+    {
+        printf("Download thread: core 2.\n");
     }
 
     if (job_thread == NULL)
@@ -1543,6 +1562,22 @@ boolean P3DS_GetGameData(void)
         {
             result = true;
             break;
+        }
+
+        // Drawing the screen in software takes most of a frame, and the
+        // download runs below the screens' priority: while it works, only
+        // redraw a few times a second so unpacking gets the CPU.
+        if (screen == SCREEN_WORKING)
+        {
+            static u64 drawn_at;
+            u64 now = osGetTime();
+
+            if (now - drawn_at < 250)
+            {
+                gspWaitForVBlank();
+                continue;
+            }
+            drawn_at = now;
         }
 
         bot = (u16 *) gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
