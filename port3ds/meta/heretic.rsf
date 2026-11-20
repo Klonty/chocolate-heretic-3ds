@@ -157,6 +157,7 @@ AccessControlInfo:
    - news:s
    - nwm::UDS
    - ptm:u
+   - ps:ps    # random numbers for the Blasphemer download (TLS)
    - pxi:dev
    - soc:U
    - gsp::Lcd

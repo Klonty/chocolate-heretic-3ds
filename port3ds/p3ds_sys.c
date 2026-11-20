@@ -55,7 +55,13 @@ static devoptab_t log_dotab =
 // Call after consoleInit(): remember its device and put ours in front.
 static void InstallLogDevice(void)
 {
-    console_dotab = devoptab_list[STD_OUT];
+    // consoleInit() only installs its own device the first time, so on a
+    // later call ours is still in place: keep the console device we have
+    // rather than forwarding to ourselves.
+    if (devoptab_list[STD_OUT] != &log_dotab)
+    {
+        console_dotab = devoptab_list[STD_OUT];
+    }
     console_on = true;
     devoptab_list[STD_OUT] = &log_dotab;
     devoptab_list[STD_ERR] = &log_dotab;
@@ -66,6 +72,14 @@ static void InstallLogDevice(void)
 void P3DS_ConsoleOff(void)
 {
     console_on = false;
+}
+
+// Give the bottom screen back to a fresh console after something else
+// (the first-start screen) drew on it.
+void P3DS_ConsoleRestore(void)
+{
+    consoleInit(GFX_BOTTOM, NULL);
+    InstallLogDevice();
 }
 
 // --- Startup / shutdown -----------------------------------------------------

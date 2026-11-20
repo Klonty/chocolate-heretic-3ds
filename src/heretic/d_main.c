@@ -957,6 +957,14 @@ void D_DoomMain(void)
 
     iwadfile = D_FindIWAD(IWAD_MASK_HERETIC, &gamemission);
 
+#ifdef __3DS__
+    // No game data: offer to download Blasphemer, then look again.
+    if (iwadfile == NULL && P3DS_GetGameData())
+    {
+        iwadfile = D_FindIWAD(IWAD_MASK_HERETIC, &gamemission);
+    }
+#endif
+
     if (iwadfile == NULL)
     {
 #ifdef __3DS__

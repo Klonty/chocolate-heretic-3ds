@@ -41,16 +41,30 @@ HERETIC_C   := $(filter-out $(ROOT)/src/heretic/heretic_icon.c,$(wildcard $(ROOT
 OPL_C       := $(ROOT)/opl/opl.c $(ROOT)/opl/opl_queue.c
 PORT_C      := $(wildcard $(ROOT)/port3ds/*.c)
 
-ALL_C       := $(SRC_C) $(HERETIC_C) $(OPL_C) $(PORT_C)
+# Bundled third-party code for the Blasphemer download (p3ds_getwad.c):
+# mbedtls for HTTPS and zlib's inflate for unzipping.  See
+# port3ds/third_party/README.md.
+TP          := $(ROOT)/port3ds/third_party
+MBEDTLS_C   := $(wildcard $(TP)/mbedtls/library/*.c)
+ZLIB_C      := $(addprefix $(TP)/zlib/,adler32.c crc32.c inffast.c \
+               inflate.c inftrees.c zutil.c)
 
-INCLUDES    := port3ds/include port3ds src src/heretic opl
+ALL_C       := $(SRC_C) $(HERETIC_C) $(OPL_C) $(PORT_C) $(MBEDTLS_C) $(ZLIB_C)
+
+# Art for the first-start screen, drawn by meta/make_art.py.
+BINFILES    := getwad_top.bin getwad_font.bin
+
+INCLUDES    := port3ds/include port3ds src src/heretic opl \
+               port3ds/third_party port3ds/third_party/mbedtls/include \
+               port3ds/third_party/zlib
 
 ARCH        := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
 CFLAGS      := -g -Wall -O2 -mword-relocations \
                -ffunction-sections -fdata-sections \
                $(ARCH) \
-               -D__3DS__ -DARM11
+               -D__3DS__ -DARM11 \
+               -DMBEDTLS_CONFIG_FILE='"mbedtls_config_3ds.h"'
 
 CFLAGS      += $(foreach dir,$(INCLUDES),-I$(ROOT)/$(dir)) \
                -I$(TOPDIR)/$(BUILD) -I$(CTRULIB)/include
@@ -69,10 +83,13 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 
 export OUTPUT   := $(CURDIR)/$(TARGET)
 export TOPDIR   := $(CURDIR)
-export VPATH    := $(sort $(dir $(ALL_C)))
+export VPATH    := $(sort $(dir $(ALL_C))) $(CURDIR)/meta
 export DEPSDIR  := $(CURDIR)/$(BUILD)
 
-export OFILES   := $(notdir $(ALL_C:.c=.o))
+export OFILES_SOURCES := $(notdir $(ALL_C:.c=.o))
+export OFILES_BIN     := $(addsuffix .o,$(BINFILES))
+export OFILES   := $(OFILES_BIN) $(OFILES_SOURCES)
+export HFILES   := $(addsuffix .h,$(subst .,_,$(BINFILES)))
 export LD       := $(CC)
 export INCLUDE  := $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 export LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
@@ -114,6 +131,13 @@ DEPENDS := $(OFILES:.o=.d)
 
 $(OUTPUT).3dsx : $(OUTPUT).elf $(OUTPUT).smdh
 $(OUTPUT).elf  : $(OFILES)
+
+# Sources may include the generated *_bin.h headers.
+$(OFILES_SOURCES) : $(HFILES)
+
+%.bin.o %_bin.h : %.bin
+	@echo $(notdir $<)
+	@$(bin2o)
 
 -include $(DEPENDS)
 

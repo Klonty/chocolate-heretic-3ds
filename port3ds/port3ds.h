@@ -24,6 +24,14 @@ void P3DS_FatalScreen(const char *title, const char *message);
 // screen over).  Output still goes to the log file.
 void P3DS_ConsoleOff(void);
 
+// Bring the console back on the bottom screen after P3DS_ConsoleOff.
+void P3DS_ConsoleRestore(void);
+
+// First-start screen when no IWAD was found (p3ds_getwad.c): offers to
+// download Blasphemer or explains where to put a WAD.  Returns true once
+// blasphem.wad is in place; quits the program if the player chooses to.
+boolean P3DS_GetGameData(void);
+
 // Create a thread at the main thread's priority plus prio_delta
 // (negative = higher priority), preferring a core the game loop is not
 // running on.  Returns NULL on failure.  The type is libctru's Thread

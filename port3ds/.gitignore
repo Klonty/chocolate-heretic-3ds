@@ -8,3 +8,4 @@ build/
 # Makefile and config.h that autotools/CMake generate elsewhere).
 !Makefile
 !include/config.h
+!third_party/mbedtls/include/mbedtls/config.h

@@ -30,8 +30,9 @@ all changes to the shared code are behind `#ifdef __3DS__`.
    - `heretic.3dsx`: copy it to `sdmc:/3ds/heretic/` and start it from the
      Homebrew Launcher.
 2. Copy a Heretic IWAD (`HERETIC.WAD`, `heretic1.wad` or `blasphem.wad`) to
-   `sdmc:/3ds/heretic/` on your SD card. The game creates the folder on its
-   first start and tells you which files it looks for.
+   `sdmc:/3ds/heretic/` on your SD card, or just start the game: with no
+   IWAD it offers to download the free
+   [Blasphemer](https://github.com/Blasphemer/blasphemer) for you.
 
 To build it yourself, install
 [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the `3ds-dev`
@@ -54,4 +55,6 @@ package group and run `make` in `port3ds/` (`make cia` for the `.cia`).
 ## Licence
 
 GNU GPL v2, like Chocolate Doom — see [`COPYING.md`](COPYING.md). Heretic is a
-trademark of its respective owners; you need your own copy of the game.
+trademark of its respective owners; you need your own copy of the game (or
+the free Blasphemer). The port bundles mbedtls and part of zlib under their
+own licences; see [`port3ds/third_party/README.md`](port3ds/third_party/README.md).

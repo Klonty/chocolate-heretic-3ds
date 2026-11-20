@@ -48,8 +48,16 @@ There are two builds; pick one (or both, they share everything):
   it from the Homebrew Launcher.
 
 Then copy your IWAD to `sdmc:/3ds/heretic/` (`HERETIC.WAD`, `heretic1.wad`
-or `blasphem.wad`). The game creates that folder on its first start; if no
-IWAD is there it says which files it looks for and waits for START.
+or `blasphem.wad`). The game creates that folder on its first start.
+
+If no IWAD is there, a first-start screen offers two things:
+
+- **Download Blasphemer**: fetches the free
+  [Blasphemer](https://github.com/Blasphemer/blasphemer) 0.1.8 (7.6 MB) from
+  its official GitHub release over Wi-Fi, checks it against a pinned
+  SHA-256, unpacks `blasphem.wad` into `sdmc:/3ds/heretic/` (about 30 MB
+  free space needed) and starts the game.
+- **Use my own Heretic files**: shows which files to copy where.
 
 Config files and savegames also go to `sdmc:/3ds/heretic/`, for both builds. The startup log
 is shown on the bottom screen and written to `sdmc:/3ds/heretic/heretic.log`,
@@ -198,6 +206,11 @@ described in `meta/heretic.rsf`.
   current Nuked OPL3, which is far too heavy for the 3DS's ARM11. Replaces
   `opl/opl_sdl.c`.
 - `stubs_3ds.c`: ENDOOM screen and multiplayer launch GUI, both left out.
+- `p3ds_getwad.c`: the first-start screen and Blasphemer download (HTTPS via
+  the bundled mbedtls, unzip via zlib's inflate; see
+  [`third_party/README.md`](third_party/README.md)). Its art and fonts are
+  `meta/getwad_top.bin` and `meta/getwad_font.bin`, drawn by
+  `meta/make_art.py`.
 
 Changes to the shared code are mostly under `#ifdef __3DS__`: the wider
 framebuffer in `src/i_video.h`, the centred 320-wide interface in
